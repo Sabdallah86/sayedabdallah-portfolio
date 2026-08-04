@@ -3,6 +3,14 @@ const menuButton = document.querySelector('.menu-toggle');
 const nav = document.querySelector('.main-nav');
 const toast = document.querySelector('.toast');
 
+// Keep the public contact email in one place.
+const publicEmail = 'sayedabdallah@micaegypt.com';
+document.querySelectorAll('a[href^="mailto:"]').forEach(link => {
+  const subject = link.href.includes('?') ? link.href.slice(link.href.indexOf('?')) : '';
+  link.href = `mailto:${publicEmail}${subject}`;
+  if (link.textContent.includes('@')) link.textContent = publicEmail;
+});
+
 window.addEventListener('scroll', () => {
   header.classList.toggle('scrolled', window.scrollY > 24);
 });
