@@ -49,7 +49,7 @@ jobs:
             curl --fail --location --retry 3 --retry-delay 2 "${base}/${file}" --output "assets/${file}"
           done
 
-      - name: Restore On the Road media from deployment history
+      - name: Restore On the Road videos from deployment history
         shell: bash
         env:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -65,7 +65,7 @@ jobs:
           while IFS= read -r deployment_url; do
             [ -z "${deployment_url}" ] && continue
             if curl --fail --silent --location \
-              "${deployment_url}/assets/on-the-road-first-journey.webp" \
+              "${deployment_url}/assets/on-the-road-first-journey.mp4" \
               --output /dev/null; then
               source_url="${deployment_url}"
               break
@@ -77,15 +77,11 @@ jobs:
             exit 1
           fi
 
-          echo "Restoring On the Road media from ${source_url}"
+          echo "Restoring On the Road videos from ${source_url}"
           files=(
-            on-the-road-first-journey.webp
             on-the-road-first-journey.mp4
-            on-the-road-nelly-karim.webp
             on-the-road-nelly-karim.mp4
-            on-the-road-life-road.webp
             on-the-road-life-road.mp4
-            on-the-road-25-years.webp
             on-the-road-25-years.mp4
           )
           for file in "${files[@]}"; do
@@ -93,6 +89,34 @@ jobs:
             curl --fail --location --retry 3 --retry-delay 2 \
               "${source_url}/assets/${file}" \
               --output "assets/${file}"
+          done
+
+      - name: Create clean On the Road thumbnails
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y ffmpeg
+          fi
+
+          videos=(
+            on-the-road-first-journey
+            on-the-road-nelly-karim
+            on-the-road-life-road
+            on-the-road-25-years
+          )
+
+          for video in "${videos[@]}"; do
+            echo "Creating thumbnail for ${video}"
+            ffmpeg -hide_banner -loglevel error -y \
+              -ss 1 \
+              -i "assets/${video}.mp4" \
+              -frames:v 1 \
+              -vf "scale=1200:1500:force_original_aspect_ratio=increase,crop=1200:1500" \
+              -q:v 2 \
+              "assets/${video}.jpg"
+            test -s "assets/${video}.jpg"
           done
 
       - name: Restore On the Road collection in TV Programs
@@ -115,7 +139,7 @@ jobs:
             projects:[
               { title:'ON E Channel', subtitle:'TV Programs · Video Editing', index:'TV01', image:'assets/on-e.webp' },
               { title:'Ramadan 2025', subtitle:'TV Promo · Video Editing', index:'TV02', image:'assets/ramadan-2025.webp' },
-              { title:'On the Road', subtitle:'TV Program · Video Collection', index:'TV03', image:'assets/on-the-road-first-journey.webp', collection:'on-the-road', badge:'Open Collection' },
+              { title:'On the Road', subtitle:'TV Program · Video Collection', index:'TV03', image:'assets/on-the-road-first-journey.jpg', imageFallback:'assets/on-e.webp', collection:'on-the-road', badge:'Open Collection' },
               { title:'ArabWood', subtitle:'Entertainment Program · Video Collection', index:'TV04', image:'https://i.ytimg.com/vi/sCGh1JRMK3E/hqdefault.jpg', imageFallback:'assets/on-e.webp', collection:'arabwood', badge:'Open Collection' }
             ],
             collections:{
@@ -123,13 +147,13 @@ jobs:
                 title:'On the Road',
                 kicker:'TV Program',
                 description:'A dedicated collection of promos and social edits created for the On the Road program.',
-                cover:'assets/on-the-road-first-journey.webp',
+                cover:'assets/on-the-road-first-journey.jpg',
                 layout:'portrait',
                 projects:[
-                  { title:'First Journey', subtitle:'On the Road · Program Promo', index:'OTR01', image:'assets/on-the-road-first-journey.webp', video:'assets/on-the-road-first-journey.mp4', badge:'Watch Video', format:'portrait' },
-                  { title:'Nelly Karim Teaser', subtitle:'On the Road · Social Promo', index:'OTR02', image:'assets/on-the-road-nelly-karim.webp', video:'assets/on-the-road-nelly-karim.mp4', badge:'Watch Video', format:'portrait' },
-                  { title:'The Road of Life', subtitle:'On the Road · Program Teaser', index:'OTR03', image:'assets/on-the-road-life-road.webp', video:'assets/on-the-road-life-road.mp4', badge:'Watch Video', format:'portrait' },
-                  { title:'Back After 25 Years', subtitle:'On the Road · Launch Promo', index:'OTR04', image:'assets/on-the-road-25-years.webp', video:'assets/on-the-road-25-years.mp4', badge:'Watch Video', format:'portrait' }
+                  { title:'First Journey', subtitle:'On the Road · Program Promo', index:'OTR01', image:'assets/on-the-road-first-journey.jpg', imageFallback:'assets/on-e.webp', video:'assets/on-the-road-first-journey.mp4', badge:'Watch Video', format:'portrait' },
+                  { title:'Nelly Karim Teaser', subtitle:'On the Road · Social Promo', index:'OTR02', image:'assets/on-the-road-nelly-karim.jpg', imageFallback:'assets/on-e.webp', video:'assets/on-the-road-nelly-karim.mp4', badge:'Watch Video', format:'portrait' },
+                  { title:'The Road of Life', subtitle:'On the Road · Program Teaser', index:'OTR03', image:'assets/on-the-road-life-road.jpg', imageFallback:'assets/on-e.webp', video:'assets/on-the-road-life-road.mp4', badge:'Watch Video', format:'portrait' },
+                  { title:'Back After 25 Years', subtitle:'On the Road · Launch Promo', index:'OTR04', image:'assets/on-the-road-25-years.jpg', imageFallback:'assets/on-e.webp', video:'assets/on-the-road-25-years.mp4', badge:'Watch Video', format:'portrait' }
                 ]
               },
               'arabwood':{
@@ -151,14 +175,21 @@ jobs:
 
           text = text[:start] + tv_programs + text[end:]
 
-          if '.portrait-project-grid' not in text:
-              marker = "`;document.head.appendChild(arabwoodStyles);"
-              portrait_css = """
-          .portrait-project-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.portrait-project .project-image{aspect-ratio:9/16}.portrait-project .project-info{align-items:flex-start}.portrait-project .project-info h3{font-size:15px}.video-modal video{object-fit:contain}.video-modal.portrait-video .video-modal-inner{width:min(520px,100%)}
-          @media(max-width:1100px){.portrait-project-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.portrait-project-grid{grid-template-columns:1fr}}
+          marker = "`;document.head.appendChild(arabwoodStyles);"
+          collection_css = """
+          .collection-page .portfolio-page-hero{min-height:470px;padding-top:130px;padding-bottom:58px}
+          .collection-page .page-hero-content h1{font-size:clamp(66px,9vw,130px)}
+          .portrait-project-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+          .portrait-project .project-image{aspect-ratio:4/5;overflow:hidden}
+          .portrait-project .project-image img{width:100%;height:100%;object-fit:cover}
+          .portrait-project .project-info{align-items:flex-start}
+          .portrait-project .project-info h3{font-size:17px}
+          .video-modal video{object-fit:contain}
+          .video-modal.portrait-video .video-modal-inner{width:min(520px,100%)}
+          @media(max-width:760px){.collection-page .portfolio-page-hero{min-height:400px}.portrait-project-grid{grid-template-columns:1fr}.portrait-project .project-image{aspect-ratio:4/5}}
           """
-              if marker in text:
-                  text = text.replace(marker, portrait_css + marker, 1)
+          if marker in text:
+              text = text.replace(marker, collection_css + marker, 1)
 
           path.write_text(text, encoding='utf-8')
           PY
