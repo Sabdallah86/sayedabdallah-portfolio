@@ -17,6 +17,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Inspect YouTube metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          for id in sCGh1JRMK3E hO5xZWLdrTo sCjBAIkHqQw Me1dDAzhkVM; do
+            echo "VIDEO_ID=${id}"
+            curl --fail --silent --show-error --get \
+              --data-urlencode "url=https://www.youtube.com/watch?v=${id}" \
+              --data-urlencode "format=json" \
+              https://www.youtube.com/oembed
+            echo
+          done
+
       - name: Retrieve existing portfolio media
         shell: bash
         run: |
