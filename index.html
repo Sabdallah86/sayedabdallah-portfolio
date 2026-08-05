@@ -20,13 +20,13 @@
   <div class="grain" aria-hidden="true"></div>
 
   <header class="site-header" id="top">
-    <a class="brand" href="#top" aria-label="Sayed Abdallah home">SA</a>
+    <a class="brand" href="index.html" aria-label="Sayed Abdallah home">SA</a>
     <button class="menu-toggle" aria-label="Open menu" aria-expanded="false">
       <span></span><span></span>
     </button>
     <nav class="main-nav" aria-label="Primary navigation">
       <a class="active" href="#top">Home</a>
-      <a href="#work">Work</a>
+      <a href="#categories">Work</a>
       <a href="#about">About</a>
       <a href="#contact">Contact</a>
     </nav>
@@ -58,7 +58,7 @@
       </div>
 
       <div class="project-grid">
-        <article class="project-card reveal" data-category="Sports">
+        <a class="project-card reveal project-link-card" href="index.html?category=sports-events" data-category="Sports">
           <div class="project-image">
             <img src="assets/al-ahly.webp" alt="Al Ahly Club sports content project" loading="lazy">
             <span class="play-button" aria-hidden="true">▶</span>
@@ -67,9 +67,9 @@
             <div><h3>Al Ahly Club</h3><p>Sports Content</p></div>
             <span class="project-index">01</span>
           </div>
-        </article>
+        </a>
 
-        <article class="project-card reveal" data-category="Events">
+        <a class="project-card reveal project-link-card" href="index.html?category=sports-events" data-category="Events">
           <div class="project-image">
             <img src="assets/ciff.webp" alt="Cairo International Film Festival project" loading="lazy">
             <span class="play-button" aria-hidden="true">▶</span>
@@ -78,20 +78,28 @@
             <div><h3>Cairo International Film Festival</h3><p>Event Coverage</p></div>
             <span class="project-index">02</span>
           </div>
-        </article>
+        </a>
 
-        <article class="project-card reveal" data-category="TV">
+        <article class="project-card reveal project-video"
+          data-category="TV"
+          data-video="assets/abu-el-arousa.mp4"
+          data-poster="assets/abu-el-arousa.webp"
+          data-title="Abu Al-Arousa — Season 2"
+          role="button"
+          tabindex="0"
+          aria-label="Play Abu Al-Arousa Season 2 video">
           <div class="project-image">
-            <img src="assets/abu-el-arousa.webp" alt="Abu Al-Arousa series editing project" loading="lazy">
+            <img src="assets/abu-el-arousa.webp" alt="Abu Al-Arousa Season 2 editing project" loading="lazy">
             <span class="play-button" aria-hidden="true">▶</span>
+            <span class="available-badge">Watch Project</span>
           </div>
           <div class="project-info">
-            <div><h3>Abu Al-Arousa Series</h3><p>TV Series</p></div>
+            <div><h3>Abu Al-Arousa — Season 2</h3><p>TV Series · Video Editing</p></div>
             <span class="project-index">03</span>
           </div>
         </article>
 
-        <article class="project-card reveal" data-category="TV">
+        <a class="project-card reveal project-link-card" href="index.html?category=tv-programs" data-category="TV">
           <div class="project-image">
             <img src="assets/on-e.webp" alt="ON E television project" loading="lazy">
             <span class="play-button" aria-hidden="true">▶</span>
@@ -100,9 +108,9 @@
             <div><h3>ON E Channel</h3><p>TV Programs</p></div>
             <span class="project-index">04</span>
           </div>
-        </article>
+        </a>
 
-        <article class="project-card reveal" data-category="Promo">
+        <a class="project-card reveal project-link-card" href="index.html?category=tv-programs" data-category="Promo">
           <div class="project-image">
             <img src="assets/ramadan-2025.webp" alt="Ramadan 2025 promo editing project" loading="lazy">
             <span class="play-button" aria-hidden="true">▶</span>
@@ -111,20 +119,28 @@
             <div><h3>Ramadan 2025</h3><p>TV Promo</p></div>
             <span class="project-index">05</span>
           </div>
-        </article>
+        </a>
 
-        <article class="project-card reveal" data-category="Institutional">
+        <article class="project-card reveal project-video"
+          data-category="Institutional & Social Impact"
+          data-video="assets/hospital-57357-qewa-fi-alby.mp4"
+          data-poster="assets/hospital-57357-qewa-fi-alby.webp"
+          data-title="Hospital 57357 — Qowa Fi Alby"
+          role="button"
+          tabindex="0"
+          aria-label="Play Hospital 57357 Qowa Fi Alby music video">
           <div class="project-image">
-            <img src="assets/hospital-57357.webp" alt="Hospital 57357 institutional project" loading="lazy">
+            <img src="assets/hospital-57357-qewa-fi-alby.webp" alt="Hospital 57357 Qowa Fi Alby music video edited by Sayed Abdallah" loading="lazy">
             <span class="play-button" aria-hidden="true">▶</span>
+            <span class="available-badge">Watch Project</span>
           </div>
           <div class="project-info">
-            <div><h3>Hospital 57357</h3><p>Institutional</p></div>
+            <div><h3>Hospital 57357</h3><p>Qowa Fi Alby · Music Video</p></div>
             <span class="project-index">06</span>
           </div>
         </article>
       </div>
-      <p class="draft-note reveal">Project videos will be connected after the final work selection.</p>
+      <p class="draft-note reveal">More selected projects will be added as the portfolio grows.</p>
     </section>
 
     <section class="section categories-section" id="categories">
@@ -135,11 +151,12 @@
         </div>
       </div>
       <div class="category-grid">
-        <article class="category-card reveal"><span class="category-icon">▰</span><h3>Commercial &amp;<br>Branded Content</h3><p>Campaigns, ads and brand films.</p></article>
-        <article class="category-card reveal"><span class="category-icon">▣</span><h3>TV &amp;<br>Entertainment</h3><p>Series, programs and promos.</p></article>
-        <article class="category-card reveal"><span class="category-icon">◉</span><h3>Sports &amp;<br>Events</h3><p>Fast-paced stories and coverage.</p></article>
-        <article class="category-card reveal"><span class="category-icon">◎</span><h3>Institutional &amp;<br>Social Impact</h3><p>Human stories with purpose.</p></article>
-        <article class="category-card reveal"><span class="category-icon">◇</span><h3>Motion Graphics<br>&amp; 3D</h3><p>Titles, graphics and visual systems.</p></article>
+        <a class="category-card reveal category-link" href="index.html?category=commercial"><span class="category-icon">▰</span><h3>Commercial &amp;<br>Branded Content</h3><p>Campaigns, ads and brand films.</p><span class="category-action">View Projects →</span></a>
+        <a class="category-card reveal category-link" href="index.html?category=tv-programs"><span class="category-icon">▣</span><h3>TV<br>Programs</h3><p>Programs, formats and television content.</p><span class="category-action">View Projects →</span></a>
+        <a class="category-card reveal category-link" href="index.html?category=series"><span class="category-icon">▶</span><h3>Series</h3><p>Promos, songs and selected series edits.</p><span class="category-action">View Projects →</span></a>
+        <a class="category-card reveal category-link" href="index.html?category=sports-events"><span class="category-icon">◉</span><h3>Sports &amp;<br>Events</h3><p>Fast-paced stories and event coverage.</p><span class="category-action">View Projects →</span></a>
+        <a class="category-card reveal category-link" href="index.html?category=institutional"><span class="category-icon">◎</span><h3>Institutional &amp;<br>Social Impact</h3><p>Human stories with purpose.</p><span class="category-action">View Projects →</span></a>
+        <a class="category-card reveal category-link" href="index.html?category=motion-graphics"><span class="category-icon">◇</span><h3>Motion Graphics<br>&amp; 3D</h3><p>Titles, graphics and visual systems.</p><span class="category-action">View Projects →</span></a>
       </div>
     </section>
 
@@ -157,10 +174,10 @@
     </section>
 
     <section class="section about-section" id="about">
-      <div class="about-mark reveal" aria-hidden="true">
-        <span>SA</span>
-        <small>EDITOR</small>
-      </div>
+      <figure class="about-photo reveal">
+        <img src="assets/sayed-abdallah.webp" alt="Portrait of Sayed Abdallah" loading="lazy">
+        <figcaption><span>Sayed Abdallah</span><small>Senior Video Editor</small></figcaption>
+      </figure>
       <div class="about-copy reveal">
         <p class="kicker">About Me</p>
         <h2>Stories built<br>in the edit.</h2>
@@ -209,7 +226,7 @@
   </main>
 
   <footer>
-    <a class="brand" href="#top">SA</a>
+    <a class="brand" href="index.html">SA</a>
     <p>© <span id="year"></span> Sayed Abdallah. All rights reserved.</p>
     <div class="footer-links">
       <a href="https://wa.me/201200071998" target="_blank" rel="noopener">WhatsApp</a>
@@ -217,6 +234,17 @@
       <a href="https://www.linkedin.com/in/sayed-abdallah" target="_blank" rel="noopener">LinkedIn</a>
     </div>
   </footer>
+
+  <div class="video-modal" id="video-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Project video">
+    <button class="video-modal-close" type="button" aria-label="Close video">×</button>
+    <div class="video-modal-inner">
+      <div class="video-modal-heading">
+        <p class="kicker">Video Portfolio</p>
+        <h2 id="video-modal-title">Project Video</h2>
+      </div>
+      <video id="project-video-player" controls playsinline preload="metadata"></video>
+    </div>
+  </div>
 
   <div class="toast" role="status" aria-live="polite">Project video will be added after the final selection.</div>
   <script src="script.js"></script>
