@@ -17,6 +17,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Inspect new ArabWood video title
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --get \
+            --data-urlencode "url=https://www.youtube.com/watch?v=18Ghd_t5W2E" \
+            --data-urlencode "format=json" \
+            https://www.youtube.com/oembed
+          echo
+
       - name: Retrieve existing portfolio media
         shell: bash
         run: |
