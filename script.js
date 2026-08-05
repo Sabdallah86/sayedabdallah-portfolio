@@ -37,7 +37,8 @@ const categoryData = {
           { title:'Promo General', subtitle:'ArabWood · Program Promo', index:'AW01', image:'https://i.ytimg.com/vi/sCGh1JRMK3E/hqdefault.jpg', imageFallback:'assets/on-e.webp', youtube:'sCGh1JRMK3E', badge:'Watch Video' },
           { title:'Giorgio Armani', subtitle:'ArabWood · Entertainment Edit', index:'AW02', image:'https://i.ytimg.com/vi/hO5xZWLdrTo/hqdefault.jpg', imageFallback:'assets/on-e.webp', youtube:'hO5xZWLdrTo', badge:'Watch Video' },
           { title:'Emmy Awards 2025', subtitle:'ArabWood · Event Edit', index:'AW03', image:'https://i.ytimg.com/vi/sCjBAIkHqQw/hqdefault.jpg', imageFallback:'assets/on-e.webp', youtube:'sCjBAIkHqQw', badge:'Watch Video' },
-          { title:'Brand Personality', subtitle:'ArabWood · Brand Edit', index:'AW04', image:'https://i.ytimg.com/vi/Me1dDAzhkVM/hqdefault.jpg', imageFallback:'assets/on-e.webp', youtube:'Me1dDAzhkVM', badge:'Watch Video' }
+          { title:'Brand Personality', subtitle:'ArabWood · Brand Edit', index:'AW04', image:'https://i.ytimg.com/vi/Me1dDAzhkVM/hqdefault.jpg', imageFallback:'assets/on-e.webp', youtube:'Me1dDAzhkVM', badge:'Watch Video' },
+          { title:'Salma Hayek', subtitle:'ArabWood · Entertainment Edit', index:'AW05', image:'https://i.ytimg.com/vi/18Ghd_t5W2E/hqdefault.jpg', imageFallback:'assets/on-e.webp', youtube:'18Ghd_t5W2E', badge:'Watch Video' }
         ]
       }
     }
