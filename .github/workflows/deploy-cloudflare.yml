@@ -49,6 +49,25 @@ jobs:
             curl --fail --location --retry 3 --retry-delay 2 "${base}/${file}" --output "assets/${file}"
           done
 
+      - name: Build On the Road media assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d media-payload
+          cat media-payload/on-the-road-*.b64 | base64 --decode > /tmp/on-the-road-assets.tar.gz
+          tar -xzf /tmp/on-the-road-assets.tar.gz -C assets
+          for file in \
+            on-the-road-first-journey.mp4 \
+            on-the-road-first-journey.webp \
+            on-the-road-nelly-karim.mp4 \
+            on-the-road-nelly-karim.webp \
+            on-the-road-life-road.mp4 \
+            on-the-road-life-road.webp \
+            on-the-road-25-years.mp4 \
+            on-the-road-25-years.webp; do
+            test -s "assets/${file}"
+          done
+
       - name: Deploy to existing Cloudflare Pages project
         uses: cloudflare/wrangler-action@v3
         with:
