@@ -49,6 +49,52 @@ jobs:
             curl --fail --location --retry 3 --retry-delay 2 "${base}/${file}" --output "assets/${file}"
           done
 
+      - name: Restore On the Road media from deployment history
+        shell: bash
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          deployments="$(curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer ${CF_API_TOKEN}" \
+            --header "Content-Type: application/json" \
+            "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/pages/projects/sayedabdallah/deployments?per_page=100")"
+
+          source_url=""
+          while IFS= read -r deployment_url; do
+            [ -z "${deployment_url}" ] && continue
+            if curl --fail --silent --location \
+              "${deployment_url}/assets/on-the-road-first-journey.webp" \
+              --output /dev/null; then
+              source_url="${deployment_url}"
+              break
+            fi
+          done < <(printf '%s' "${deployments}" | jq -r '.result[].url')
+
+          if [ -z "${source_url}" ]; then
+            echo "Unable to locate the previous On the Road media deployment." >&2
+            exit 1
+          fi
+
+          echo "Restoring On the Road media from ${source_url}"
+          files=(
+            on-the-road-first-journey.webp
+            on-the-road-first-journey.mp4
+            on-the-road-nelly-karim.webp
+            on-the-road-nelly-karim.mp4
+            on-the-road-life-road.webp
+            on-the-road-life-road.mp4
+            on-the-road-25-years.webp
+            on-the-road-25-years.mp4
+          )
+          for file in "${files[@]}"; do
+            echo "Downloading ${file}"
+            curl --fail --location --retry 3 --retry-delay 2 \
+              "${source_url}/assets/${file}" \
+              --output "assets/${file}"
+          done
+
       - name: Deploy to existing Cloudflare Pages project
         uses: cloudflare/wrangler-action@v3
         with:
