@@ -1,5 +1,7 @@
 # Sayed Abdallah Portfolio
 
-Cinematic portfolio website for Sayed Abdallah, Senior Video Editor & Post-Production Specialist.
+Cinematic video-editor portfolio with category routing.
+
+Category links open focused work views in the same browser tab.
 
 Live site: https://sayedabdallah.pages.dev
