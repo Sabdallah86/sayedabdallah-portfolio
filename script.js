@@ -1,3 +1,5 @@
+const categoryStyles=document.createElement('link');categoryStyles.rel='stylesheet';categoryStyles.href='category-pages.css';document.head.appendChild(categoryStyles);
+
 const categoryData = {
   commercial: {
     title: 'Commercial & Branded Content', kicker: 'Advertising',
