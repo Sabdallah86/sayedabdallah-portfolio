@@ -1,12 +1,14 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
 
+html.i18n-pending[dir="rtl"] body{visibility:hidden}
+
 .language-switcher{display:flex;align-items:center;gap:.42rem;margin-left:auto;margin-right:1rem;padding:.36rem .62rem;border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(5,5,5,.48);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);z-index:20}.language-switcher button{appearance:none;border:0;background:transparent;color:rgba(255,255,255,.58);font:600 .72rem/1 Inter,Arial,sans-serif;letter-spacing:.06em;cursor:pointer;padding:.28rem .14rem;transition:color .2s ease,opacity .2s ease}.language-switcher button[data-lang="ar"]{font-family:'IBM Plex Sans Arabic',Arial,sans-serif;font-size:.76rem;letter-spacing:0}.language-switcher button.active{color:#d7ad68}.language-switcher .divider{color:rgba(255,255,255,.22);font-size:.68rem}
 
 html[dir="rtl"] body{font-family:'IBM Plex Sans Arabic',Inter,Arial,sans-serif;direction:rtl}
 html[dir="rtl"] .site-header,html[dir="rtl"] .project-grid,html[dir="rtl"] .category-grid,html[dir="rtl"] .about-section,html[dir="rtl"] .client-strip,html[dir="rtl"] footer{direction:ltr}
 html[dir="rtl"] .main-nav{direction:rtl}
 html[dir="rtl"] .main-nav a,html[dir="rtl"] .header-cta{font-family:'IBM Plex Sans Arabic',Inter,Arial,sans-serif;letter-spacing:0}
-html[dir="rtl"] .hero-content,html[dir="rtl"] .section-heading>div,html[dir="rtl"] .project-info>div,html[dir="rtl"] .category-card,html[dir="rtl"] .showreel-copy,html[dir="rtl"] .about-copy,html[dir="rtl"] .contact-content,html[dir="rtl"] .video-modal-heading{direction:rtl;text-align:right}
+html[dir="rtl"] .hero-content,html[dir="rtl"] .section-heading>div,html[dir="rtl"] .project-info>div,html[dir="rtl"] .category-card,html[dir="rtl"] .showreel-copy,html[dir="rtl"] .about-copy,html[dir="rtl"] .contact-content,html[dir="rtl"] .video-modal-heading,html[dir="rtl"] .page-hero-content,html[dir="rtl"] .empty-state{direction:rtl;text-align:right}
 html[dir="rtl"] .hero-content{max-width:760px}
 html[dir="rtl"] .hero-content h1{direction:ltr;text-align:left;font-family:'Bebas Neue',sans-serif;letter-spacing:.01em}
 html[dir="rtl"] .hero-copy{max-width:610px;margin-left:auto;margin-right:0;line-height:1.9}
@@ -14,19 +16,20 @@ html[dir="rtl"] .eyebrow,html[dir="rtl"] .kicker{font-family:'IBM Plex Sans Arab
 html[dir="rtl"] h2,html[dir="rtl"] h3,html[dir="rtl"] p,html[dir="rtl"] a,html[dir="rtl"] span{font-synthesis:none}
 html[dir="rtl"] .section-heading{direction:ltr}
 html[dir="rtl"] .section-heading>div{direction:rtl}
-html[dir="rtl"] .section-heading h2,html[dir="rtl"] .showreel-copy h2,html[dir="rtl"] .about-copy h2,html[dir="rtl"] .contact-content h2,html[dir="rtl"] .video-modal-heading h2{font-family:'IBM Plex Sans Arabic',Inter,Arial,sans-serif;letter-spacing:-.025em;line-height:1.18;font-weight:700}
+html[dir="rtl"] .section-heading h2,html[dir="rtl"] .showreel-copy h2,html[dir="rtl"] .about-copy h2,html[dir="rtl"] .contact-content h2,html[dir="rtl"] .video-modal-heading h2,html[dir="rtl"] .page-hero-content h1{font-family:'IBM Plex Sans Arabic',Inter,Arial,sans-serif;letter-spacing:-.025em;line-height:1.18;font-weight:700}
 html[dir="rtl"] .project-info{direction:ltr}
 html[dir="rtl"] .project-info>div{direction:rtl}
 html[dir="rtl"] .project-info h3,html[dir="rtl"] .category-card h3{font-family:'IBM Plex Sans Arabic',Inter,Arial,sans-serif;letter-spacing:-.015em;line-height:1.35;font-weight:700}
-html[dir="rtl"] .project-info p,html[dir="rtl"] .category-card p,html[dir="rtl"] .showreel-copy p,html[dir="rtl"] .about-copy p,html[dir="rtl"] .contact-content p{line-height:1.85}
+html[dir="rtl"] .project-info p,html[dir="rtl"] .category-card p,html[dir="rtl"] .showreel-copy p,html[dir="rtl"] .about-copy p,html[dir="rtl"] .contact-content p,html[dir="rtl"] .page-hero-content p{line-height:1.85}
 html[dir="rtl"] .hero-actions,html[dir="rtl"] .contact-actions,html[dir="rtl"] .about-tags{direction:rtl;justify-content:flex-start}
-html[dir="rtl"] .button,html[dir="rtl"] .category-action,html[dir="rtl"] .text-link{font-family:'IBM Plex Sans Arabic',Inter,Arial,sans-serif;letter-spacing:0}
+html[dir="rtl"] .button,html[dir="rtl"] .category-action,html[dir="rtl"] .text-link,html[dir="rtl"] .back-link{font-family:'IBM Plex Sans Arabic',Inter,Arial,sans-serif;letter-spacing:0}
 html[dir="rtl"] .category-action{direction:rtl}
 html[dir="rtl"] .about-photo,html[dir="rtl"] .experience{direction:rtl}
 html[dir="rtl"] .contact-links{direction:rtl;text-align:right}
 html[dir="rtl"] footer p{direction:rtl;font-family:'IBM Plex Sans Arabic',Inter,Arial,sans-serif}
 html[dir="rtl"] .footer-links{direction:rtl}
 html[dir="rtl"] .language-switcher{direction:ltr;margin-left:auto;margin-right:1rem}
+html[dir="rtl"] .category-nav{direction:rtl}
 
 @media(max-width:900px){.language-switcher{margin-left:auto;margin-right:.65rem}.header-cta{display:none}html[dir="rtl"] .language-switcher{margin-left:auto;margin-right:.65rem}html[dir="rtl"] .main-nav{direction:rtl;text-align:right}}
 @media(max-width:640px){.language-switcher{padding:.3rem .48rem;gap:.32rem}.language-switcher button{font-size:.66rem}.language-switcher button[data-lang="ar"]{font-size:.7rem}.site-header .brand{flex:0 0 auto}html[dir="rtl"] .hero-copy{line-height:1.8}html[dir="rtl"] .section-heading h2,html[dir="rtl"] .showreel-copy h2,html[dir="rtl"] .about-copy h2,html[dir="rtl"] .contact-content h2{line-height:1.22}}
