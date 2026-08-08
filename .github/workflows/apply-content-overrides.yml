@@ -1,0 +1,129 @@
+name: Apply portfolio content overrides
+
+on:
+  workflow_run:
+    workflows:
+      - Deploy portfolio to Cloudflare Pages
+    types:
+      - completed
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  apply-overrides:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Retrieve latest deployed portfolio
+        shell: bash
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          deployments="$(curl --fail --silent --show-error --location \
+            --request GET \
+            --header "Authorization: Bearer ${CF_API_TOKEN}" \
+            "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/pages/projects/sayedabdallah/deployments")"
+          source_url="$(printf '%s' "${deployments}" | jq -r '.result[0].url')"
+          test -n "${source_url}"
+          test "${source_url}" != "null"
+          echo "Using latest deployment: ${source_url}"
+
+          curl --fail --location --retry 3 "${source_url}/index.html" --output index.html
+          curl --fail --location --retry 3 "${source_url}/script.js" --output script.js
+
+          mkdir -p assets
+          files=(
+            hero.webp
+            al-ahly.webp
+            ciff.webp
+            abu-el-arousa.webp
+            abu-el-arousa.mp4
+            on-e.webp
+            ramadan-2025.webp
+            hospital-57357.webp
+            showreel.webp
+            og-image.webp
+            sayed-abdallah.webp
+            toto-link-commercial.webp
+            toto-link-commercial.mp4
+            satuc-branded-promo.webp
+            satuc-branded-promo.mp4
+            teatro-series-promo.webp
+            teatro-series-promo.mp4
+          )
+          for file in "${files[@]}"; do
+            curl --fail --location --retry 3 "${source_url}/assets/${file}" --output "assets/${file}"
+          done
+
+      - name: Apply requested content updates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          import urllib.parse
+          import urllib.request
+
+          def yt_title(video_id, fallback):
+              try:
+                  watch = f"https://www.youtube.com/watch?v={video_id}"
+                  url = "https://www.youtube.com/oembed?" + urllib.parse.urlencode({"url": watch, "format": "json"})
+                  req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+                  with urllib.request.urlopen(req, timeout=12) as response:
+                      data = json.load(response)
+                  title = str(data.get("title", "")).strip()
+                  return title or fallback
+              except Exception:
+                  return fallback
+
+          path = Path("script.js")
+          text = path.read_text(encoding="utf-8")
+          marker = "const categoryData = "
+          start = text.index(marker) + len(marker)
+          end = text.index(";\n\nfunction escapeHTML", start)
+          data = json.loads(text[start:end])
+
+          new_song_id = "hyYa8IUSJJc"
+          data["institutional"]["projects"][1] = {
+              "title": yt_title(new_song_id, "Institutional Music Video — 02"),
+              "subtitle": "Music Video · Video Editing",
+              "index": "SI02",
+              "image": f"https://i.ytimg.com/vi/{new_song_id}/hqdefault.jpg",
+              "imageFallback": "assets/on-e.webp",
+              "youtube": new_song_id,
+              "badge": "Watch Music Video",
+          }
+
+          program_name = "Bel Quran Ehtadayt"
+          for project in data["tv-programs"]["projects"]:
+              if project.get("collection") == "bil-quran-ihtadayt":
+                  project["title"] = program_name
+
+          collection = data["tv-programs"]["collections"]["bil-quran-ihtadayt"]
+          collection["title"] = program_name
+          collection["description"] = f"Selected episodes and edits from the television program {program_name}."
+          for project in collection["projects"]:
+              project["subtitle"] = f"{program_name} · TV Program Edit"
+
+          updated = json.dumps(data, ensure_ascii=False, indent=2)
+          text = text[:start] + updated + text[end:]
+          path.write_text(text, encoding="utf-8")
+          PY
+
+          node --check script.js
+
+      - name: Deploy corrected portfolio
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy . --project-name=sayedabdallah
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
