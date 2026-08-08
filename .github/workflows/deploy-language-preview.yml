@@ -65,17 +65,90 @@ jobs:
           print(f'Validated {len(refs)} local assets.')
           PY
 
-      - name: Validate English site files
+      - name: Apply only the requested English preview fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          import shutil
+
+          youtube_id = 'hyYa8IUSJJc'
+          youtube_thumb = f'https://i.ytimg.com/vi/{youtube_id}/hqdefault.jpg'
+
+          # Force fresh Cloudflare asset paths for Qowa Fi Alby so an old/bad cached
+          # preview object cannot be reused.
+          qowa_video_src = Path('assets/hospital-57357-qewa-fi-alby.mp4')
+          qowa_image_src = Path('assets/hospital-57357-qewa-fi-alby.webp')
+          qowa_video_dst = Path('assets/qowa-fi-alby-preview-v2.mp4')
+          qowa_image_dst = Path('assets/qowa-fi-alby-preview-v2.webp')
+          shutil.copyfile(qowa_video_src, qowa_video_dst)
+          shutil.copyfile(qowa_image_src, qowa_image_dst)
+
+          # Basic file-signature checks before deployment.
+          image_head = qowa_image_dst.read_bytes()[:16]
+          video_head = qowa_video_dst.read_bytes()[:64]
+          if b'WEBP' not in image_head:
+              raise RuntimeError('Qowa Fi Alby poster is not a valid WEBP file')
+          if b'ftyp' not in video_head:
+              raise RuntimeError('Qowa Fi Alby video is not a valid MP4 file')
+
+          html_path = Path('index.html')
+          html = html_path.read_text(encoding='utf-8')
+
+          # Selected Work: Abu Al-Arousa must use the YouTube version.
+          abu_pattern = re.compile(
+              r'<article class="project-card reveal project-video"\s*\n\s*data-category="TV"[\s\S]*?<span class="project-index">03</span>\s*</div>\s*</article>',
+              re.M,
+          )
+          abu = abu_pattern.search(html)
+          if not abu:
+              raise RuntimeError('Could not find Abu Al-Arousa Selected Work card')
+          abu_card = abu.group(0)
+          abu_card = re.sub(r'\s*data-video="[^"]*"', '', abu_card, count=1)
+          abu_card = re.sub(r'\s*data-poster="[^"]*"', '', abu_card, count=1)
+          abu_card = re.sub(r'data-title="[^"]*"', f'data-youtube="{youtube_id}"\n          data-title="Abu Al-Arousa — Haytan Beitna"', abu_card, count=1)
+          abu_card = re.sub(r'aria-label="[^"]*"', 'aria-label="Play Abu Al-Arousa Haytan Beitna on YouTube"', abu_card, count=1)
+          abu_card = re.sub(r'<img src="[^"]*" alt="[^"]*"', f'<img src="{youtube_thumb}" alt="Abu Al-Arousa Haytan Beitna song edited by Sayed Abdallah"', abu_card, count=1)
+          abu_card = re.sub(r'<h3>[^<]*</h3><p>[^<]*</p>', '<h3>Abu Al-Arousa — Haytan Beitna</h3><p>Series Song · Video Editing</p>', abu_card, count=1)
+          html = html[:abu.start()] + abu_card + html[abu.end():]
+
+          # Selected Work: Qowa Fi Alby uses fresh preview paths, content unchanged.
+          html = html.replace('assets/hospital-57357-qewa-fi-alby.mp4', 'assets/qowa-fi-alby-preview-v2.mp4')
+          html = html.replace('assets/hospital-57357-qewa-fi-alby.webp', 'assets/qowa-fi-alby-preview-v2.webp')
+          html_path.write_text(html, encoding='utf-8')
+
+          script_path = Path('script.js')
+          script = script_path.read_text(encoding='utf-8')
+
+          # Series page: use the exact same Abu Al-Arousa YouTube video as Selected Work.
+          series_old = re.compile(
+              r"\{ title:'Abu Al-Arousa — Song', subtitle:'Series Song · Video Editing', index:'S02', image:'assets/abu-el-arousa\.webp', video:'assets/abu-el-arousa\.mp4', badge:'Watch Video' \}"
+          )
+          series_new = "{ title:'Abu Al-Arousa — Haytan Beitna', subtitle:'Series Song · Video Editing', index:'S02', image:'%s', youtube:'%s', badge:'Watch Video' }" % (youtube_thumb, youtube_id)
+          script, count = series_old.subn(series_new, script, count=1)
+          if count != 1:
+              raise RuntimeError('Could not update Abu Al-Arousa Series project')
+
+          # Institutional page: keep Qowa Fi Alby identical, only fresh preview paths.
+          script = script.replace('assets/hospital-57357-qewa-fi-alby.mp4', 'assets/qowa-fi-alby-preview-v2.mp4')
+          script = script.replace('assets/hospital-57357-qewa-fi-alby.webp', 'assets/qowa-fi-alby-preview-v2.webp')
+          script_path.write_text(script, encoding='utf-8')
+          PY
+
+      - name: Validate English preview before deployment
         shell: bash
         run: |
           set -euo pipefail
           node --check script.js
-          if grep -q "i18n-preview" index.html; then
-            echo "Unexpected language-preview code found in index.html"
-            exit 1
-          fi
-          if grep -q "language-switcher" index.html; then
-            echo "Unexpected language switcher found in live HTML"
+          grep -q 'data-youtube="hyYa8IUSJJc"' index.html
+          grep -q 'qowa-fi-alby-preview-v2.mp4' index.html
+          grep -q "youtube:'hyYa8IUSJJc'" script.js
+          test -s assets/qowa-fi-alby-preview-v2.mp4
+          test -s assets/qowa-fi-alby-preview-v2.webp
+          if grep -q "i18n-preview\|language-switcher" index.html; then
+            echo "Unexpected language code found in English preview"
             exit 1
           fi
 
@@ -86,3 +159,27 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy . --project-name=sayedabdallah --branch=language-preview
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify deployed preview files
+        shell: bash
+        run: |
+          set -euo pipefail
+          preview="https://language-preview.sayedabdallah.pages.dev"
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --location --silent --show-error "${preview}/index.html" -o /tmp/preview-index.html; then
+              break
+            fi
+            sleep 3
+          done
+          grep -q 'data-youtube="hyYa8IUSJJc"' /tmp/preview-index.html
+          grep -q 'qowa-fi-alby-preview-v2.mp4' /tmp/preview-index.html
+          curl --fail --location --retry 5 --silent --show-error "${preview}/assets/qowa-fi-alby-preview-v2.webp" -o /tmp/qowa.webp
+          curl --fail --location --retry 5 --silent --show-error --range 0-2047 "${preview}/assets/qowa-fi-alby-preview-v2.mp4" -o /tmp/qowa.mp4.part
+          python - <<'PY'
+          from pathlib import Path
+          if b'WEBP' not in Path('/tmp/qowa.webp').read_bytes()[:16]:
+              raise RuntimeError('Deployed Qowa poster failed WEBP validation')
+          if b'ftyp' not in Path('/tmp/qowa.mp4.part').read_bytes()[:64]:
+              raise RuntimeError('Deployed Qowa video failed MP4 validation')
+          print('Deployed Qowa Fi Alby poster/video and Abu Al-Arousa YouTube card validated.')
+          PY
