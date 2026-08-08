@@ -46,130 +46,284 @@ clients = [
     "Egyptian Television",
 ]
 
-replacement = '<div class="client-strip client-grid reveal" aria-label="Selected clients">\n'
-replacement += "\n".join(
-    f'        <span class="client-tile" style="--client-i:{i}">{name}</span>'
-    for i, name in enumerate(clients)
-)
-replacement += '\n      </div>'
+row_one = clients[::2]
+row_two = clients[1::2]
 
-pattern = r'<div class="client-strip(?: client-grid)? reveal" aria-label="Selected clients">.*?</div>'
-html, count = re.subn(pattern, replacement, html, count=1, flags=re.S)
-if count != 1:
-    raise SystemExit("Could not find selected clients block")
+def group_markup(items, hidden=False):
+    hidden_attr = ' aria-hidden="true"' if hidden else ''
+    chips = "\n".join(f'            <span class="client-name">{name}</span>' for name in items)
+    return f'          <div class="client-group"{hidden_attr}>\n{chips}\n          </div>'
+
+replacement = f'''<!-- CLIENT WALL START -->
+<div class="client-wall reveal" aria-label="Selected clients">
+        <div class="client-wall-intro">
+          <strong>35+ CLIENTS</strong>
+          <span>TV NETWORKS · PRODUCTION HOUSES · INSTITUTIONS · BRANDS</span>
+          <small>EGYPT · KUWAIT · SAUDI ARABIA · REGIONAL PRODUCTIONS</small>
+        </div>
+        <div class="client-marquee client-marquee-left" aria-label="Selected clients row one">
+          <div class="client-track">
+{group_markup(row_one)}
+{group_markup(row_one, True)}
+          </div>
+        </div>
+        <div class="client-marquee client-marquee-right" aria-label="Selected clients row two">
+          <div class="client-track">
+{group_markup(row_two)}
+{group_markup(row_two, True)}
+          </div>
+        </div>
+      </div>
+<!-- CLIENT WALL END -->'''
+
+start_comment = "<!-- CLIENT WALL START -->"
+end_comment = "<!-- CLIENT WALL END -->"
+if start_comment in html and end_comment in html:
+    html = re.sub(
+        re.escape(start_comment) + r".*?" + re.escape(end_comment),
+        replacement,
+        html,
+        count=1,
+        flags=re.S,
+    )
+else:
+    old_pattern = r'<div class="client-strip(?: client-grid)? reveal" aria-label="Selected clients">.*?</div>'
+    html, count = re.subn(old_pattern, replacement, html, count=1, flags=re.S)
+    if count != 1:
+        raise SystemExit("Could not find selected clients block")
 
 index_path.write_text(html, encoding="utf-8")
 
-start_marker = "/* CLIENT GRID START */"
-end_marker = "/* CLIENT GRID END */"
-styles = re.sub(
-    re.escape(start_marker) + r".*?" + re.escape(end_marker),
-    "",
-    styles,
-    flags=re.S,
-).rstrip()
+# Remove the previous client-grid/client-wall injected CSS, then append the new wall styling.
+for start_marker, end_marker in [
+    ("/* CLIENT GRID START */", "/* CLIENT GRID END */"),
+    ("/* CLIENT WALL START */", "/* CLIENT WALL END */"),
+]:
+    styles = re.sub(
+        re.escape(start_marker) + r".*?" + re.escape(end_marker),
+        "",
+        styles,
+        flags=re.S,
+    )
+styles = styles.rstrip()
 
 client_css = r'''
 
-/* CLIENT GRID START */
-.client-strip.client-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+/* CLIENT WALL START */
+.client-wall {
+  margin-top: 24px;
   width: 100%;
-  overflow: visible;
-  white-space: normal;
-  align-items: stretch;
+  overflow: hidden;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 28px 0 30px;
+  position: relative;
 }
 
-.client-strip.client-grid .client-tile {
+.client-wall::before,
+.client-wall::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: clamp(36px, 7vw, 120px);
+  z-index: 4;
+  pointer-events: none;
+}
+
+.client-wall::before {
+  left: 0;
+  background: linear-gradient(90deg, var(--bg), transparent);
+}
+
+.client-wall::after {
+  right: 0;
+  background: linear-gradient(270deg, var(--bg), transparent);
+}
+
+.client-wall-intro {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: end;
+  gap: 18px;
+  padding: 0 4px 24px;
+}
+
+.client-wall-intro strong {
+  font-family: var(--display);
+  font-size: clamp(40px, 5vw, 72px);
+  line-height: .9;
+  font-weight: 400;
+  color: var(--text);
+  letter-spacing: .025em;
+}
+
+.client-wall-intro span,
+.client-wall-intro small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .13em;
+  line-height: 1.5;
+}
+
+.client-wall-intro span {
+  color: var(--gold);
+}
+
+.client-wall-intro small {
+  text-align: right;
+}
+
+.client-marquee {
   position: relative;
+  overflow: hidden;
+  width: 100%;
+  padding: 6px 0;
+}
+
+.client-marquee + .client-marquee {
+  margin-top: 8px;
+}
+
+.client-track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+}
+
+.client-group {
+  display: flex;
+  gap: 12px;
+  padding-right: 12px;
+}
+
+.client-name {
+  flex: 0 0 auto;
+  min-height: 64px;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 92px;
-  padding: 18px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012));
-  color: rgba(255, 255, 255, 0.88);
-  font-size: clamp(0.78rem, 0.92vw, 0.98rem);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  line-height: 1.35;
-  text-align: center;
+  padding: 0 28px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.018);
+  color: #c8c8c5;
+  font-family: var(--display);
+  font-size: clamp(18px, 1.7vw, 26px);
+  letter-spacing: .055em;
+  line-height: 1;
   text-transform: uppercase;
-  overflow: hidden;
-  isolation: isolate;
-  opacity: 0;
-  transform: translateY(18px) scale(0.985);
-  animation: clientTileIn 620ms cubic-bezier(.2,.75,.25,1) forwards;
-  animation-delay: calc(var(--client-i) * 45ms);
-  transition: transform 260ms ease, border-color 260ms ease, background 260ms ease, box-shadow 260ms ease, color 260ms ease;
+  white-space: nowrap;
+  transition: color .25s ease, border-color .25s ease, background .25s ease, transform .25s ease;
 }
 
-.client-strip.client-grid .client-tile::before {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  z-index: -1;
-  background: linear-gradient(115deg, transparent 20%, rgba(214, 165, 43, 0.16) 50%, transparent 80%);
-  transform: translateX(-120%);
-  transition: transform 600ms ease;
+.client-name::before {
+  content: "•";
+  color: var(--gold);
+  font-family: var(--body);
+  font-size: 9px;
+  margin-right: 12px;
+  opacity: .8;
 }
 
-.client-strip.client-grid .client-tile:hover {
-  transform: translateY(-6px);
-  border-color: rgba(214, 165, 43, 0.78);
-  background: linear-gradient(145deg, rgba(214, 165, 43, 0.08), rgba(255, 255, 255, 0.018));
-  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.24);
+.client-marquee-left .client-track {
+  animation: clientScrollLeft 46s linear infinite;
+}
+
+.client-marquee-right .client-track {
+  animation: clientScrollRight 52s linear infinite;
+}
+
+.client-wall:hover .client-track {
+  animation-play-state: paused;
+}
+
+.client-name:hover {
   color: #fff;
+  border-color: rgba(214,169,50,.75);
+  background: rgba(214,169,50,.085);
+  transform: translateY(-2px);
 }
 
-.client-strip.client-grid .client-tile:hover::before {
-  transform: translateX(120%);
+@keyframes clientScrollLeft {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
 
-@keyframes clientTileIn {
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@media (max-width: 1050px) {
-  .client-strip.client-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
+@keyframes clientScrollRight {
+  from { transform: translateX(-50%); }
+  to { transform: translateX(0); }
 }
 
 @media (max-width: 760px) {
-  .client-strip.client-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+  .client-wall {
+    padding: 22px 0 24px;
   }
 
-  .client-strip.client-grid .client-tile {
-    min-height: 78px;
-    padding: 14px 10px;
-    font-size: 0.72rem;
+  .client-wall::before,
+  .client-wall::after {
+    display: none;
   }
-}
 
-@media (max-width: 430px) {
-  .client-strip.client-grid {
+  .client-wall-intro {
     grid-template-columns: 1fr;
+    align-items: start;
+    gap: 8px;
+    padding-bottom: 18px;
+  }
+
+  .client-wall-intro strong {
+    font-size: 48px;
+  }
+
+  .client-wall-intro small {
+    text-align: left;
+  }
+
+  .client-marquee {
+    overflow-x: auto;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
+  }
+
+  .client-marquee::-webkit-scrollbar {
+    display: none;
+  }
+
+  .client-track {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .client-group[aria-hidden="true"] {
+    display: none;
+  }
+
+  .client-name {
+    min-height: 58px;
+    padding: 0 20px;
+    font-size: 20px;
+    scroll-snap-align: start;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .client-strip.client-grid .client-tile {
-    opacity: 1;
-    transform: none;
-    animation: none;
-    transition: none;
+  .client-track {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .client-marquee {
+    overflow-x: auto;
+  }
+
+  .client-group[aria-hidden="true"] {
+    display: none;
   }
 }
-/* CLIENT GRID END */
+/* CLIENT WALL END */
 '''
 
 styles_path.write_text(styles + client_css, encoding="utf-8")
