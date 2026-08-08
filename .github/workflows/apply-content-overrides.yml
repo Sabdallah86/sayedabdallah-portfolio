@@ -88,8 +88,11 @@ jobs:
           text = path.read_text(encoding="utf-8")
           marker = "const categoryData = "
           start = text.index(marker) + len(marker)
-          end = text.index(";\n\nfunction escapeHTML", start)
-          data = json.loads(text[start:end])
+          function_start = text.index("function escapeHTML", start)
+          raw_json = text[start:function_start].rstrip()
+          if raw_json.endswith(";"):
+              raw_json = raw_json[:-1].rstrip()
+          data = json.loads(raw_json)
 
           new_song_id = "hyYa8IUSJJc"
           data["institutional"]["projects"][1] = {
@@ -114,7 +117,7 @@ jobs:
               project["subtitle"] = f"{program_name} · TV Program Edit"
 
           updated = json.dumps(data, ensure_ascii=False, indent=2)
-          text = text[:start] + updated + text[end:]
+          text = text[:start] + updated + ";\n\n" + text[function_start:]
           path.write_text(text, encoding="utf-8")
           PY
 
