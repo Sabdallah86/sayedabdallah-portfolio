@@ -62,7 +62,28 @@ jobs:
             curl --fail --location --retry 3 "${source_url}/assets/${file}" --output "assets/${file}"
           done
 
-      - name: Apply requested content updates
+      - name: Optimize local MP4 files for seeking
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y ffmpeg
+          fi
+
+          shopt -s nullglob
+          for file in assets/*.mp4; do
+            echo "Optimizing ${file} for instant seeking"
+            temp="${file%.mp4}.faststart.mp4"
+            ffmpeg -hide_banner -loglevel error -y \
+              -i "${file}" \
+              -c copy \
+              -movflags +faststart \
+              "${temp}"
+            mv "${temp}" "${file}"
+          done
+
+      - name: Apply requested content and player updates
         shell: bash
         run: |
           set -euo pipefail
@@ -94,17 +115,19 @@ jobs:
               raw_json = raw_json[:-1].rstrip()
           data = json.loads(raw_json)
 
-          new_song_id = "hyYa8IUSJJc"
-          data["institutional"]["projects"][1] = {
-              "title": yt_title(new_song_id, "Institutional Music Video — 02"),
-              "subtitle": "Music Video · Video Editing",
-              "index": "SI02",
-              "image": f"https://i.ytimg.com/vi/{new_song_id}/hqdefault.jpg",
-              "imageFallback": "assets/on-e.webp",
-              "youtube": new_song_id,
-              "badge": "Watch Music Video",
+          # Correct Abu Al-Arousa / Haytan Beitna inside the Series category.
+          haytan_id = "hyYa8IUSJJc"
+          data["series"]["projects"][1] = {
+              "title": yt_title(haytan_id, "Abu Al-Arousa — Haytan Beitna"),
+              "subtitle": "Series Song · Video Editing",
+              "index": "S02",
+              "image": f"https://i.ytimg.com/vi/{haytan_id}/hqdefault.jpg",
+              "imageFallback": "assets/abu-el-arousa.webp",
+              "youtube": haytan_id,
+              "badge": "Watch Video",
           }
 
+          # Keep the Quran program title in Franco/English on every deployment.
           program_name = "Bel Quran Ehtadayt"
           for project in data["tv-programs"]["projects"]:
               if project.get("collection") == "bil-quran-ihtadayt":
@@ -118,7 +141,44 @@ jobs:
 
           updated = json.dumps(data, ensure_ascii=False, indent=2)
           text = text[:start] + updated + ";\n\n" + text[function_start:]
+
+          # Keep native controls, allow seeking, and hide download-related UI where browsers support it.
+          player_marker = "const videoPlayer = document.getElementById('project-video-player');"
+          player_setup = """const videoPlayer = document.getElementById('project-video-player');
+if (videoPlayer) {
+  videoPlayer.controls = true;
+  videoPlayer.preload = 'auto';
+  videoPlayer.setAttribute('controlsList', 'nodownload noremoteplayback');
+  videoPlayer.disablePictureInPicture = true;
+  videoPlayer.addEventListener('contextmenu', event => event.preventDefault());
+}"""
+          if player_marker in text and "controlsList', 'nodownload noremoteplayback'" not in text:
+              text = text.replace(player_marker, player_setup, 1)
+
+          local_branch = """  } else if (card.dataset.video && videoPlayer) {
+    videoPlayer.src = card.dataset.video;
+    videoPlayer.poster = card.dataset.poster || '';
+    videoPlayer.hidden = false;
+  }"""
+          local_branch_fixed = """  } else if (card.dataset.video && videoPlayer) {
+    videoPlayer.src = card.dataset.video;
+    videoPlayer.poster = card.dataset.poster || '';
+    videoPlayer.preload = 'auto';
+    videoPlayer.hidden = false;
+    videoPlayer.load();
+  }"""
+          if local_branch in text:
+              text = text.replace(local_branch, local_branch_fixed, 1)
+
           path.write_text(text, encoding="utf-8")
+
+          index = Path("index.html")
+          html = index.read_text(encoding="utf-8")
+          old_tag = '<video id="project-video-player" controls playsinline preload="metadata"></video>'
+          new_tag = '<video id="project-video-player" controls playsinline preload="auto" controlslist="nodownload noremoteplayback" disablepictureinpicture oncontextmenu="return false;"></video>'
+          if old_tag in html:
+              html = html.replace(old_tag, new_tag, 1)
+          index.write_text(html, encoding="utf-8")
           PY
 
           node --check script.js
