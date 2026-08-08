@@ -123,19 +123,30 @@ jobs:
                   "badge": "Watch Music Video",
               }
 
-          program_name = "Bel Quran Ehtadayt"
-          for project in data["tv-programs"]["projects"]:
+          tv_programs = data["tv-programs"]
+
+          program_name = "Bel Quran Ehtadayt — Kuwait"
+          for project in tv_programs["projects"]:
               if project.get("collection") == "bil-quran-ihtadayt":
                   project["title"] = program_name
-          collection = data["tv-programs"]["collections"]["bil-quran-ihtadayt"]
+          collection = tv_programs["collections"]["bil-quran-ihtadayt"]
           collection["title"] = program_name
           collection["description"] = f"Selected episodes and edits from the television program {program_name}."
           for project in collection["projects"]:
               project["subtitle"] = f"{program_name} · TV Program Edit"
 
+          faseero_name = "Faseero — Kuwait"
+          for project in tv_programs["projects"]:
+              if project.get("collection") == "faseero":
+                  project["title"] = faseero_name
+          faseero_collection = tv_programs["collections"]["faseero"]
+          faseero_collection["title"] = faseero_name
+          faseero_collection["description"] = f"Selected work from {faseero_name}."
+          for project in faseero_collection["projects"]:
+              project["subtitle"] = f"{faseero_name} · TV Program Edit"
+
           makhmak_id = "mkJ6DVwDMjQ"
           makhmak_title = "Program MAKHMAK — Platform SHASHA Kuwait"
-          tv_programs = data["tv-programs"]
           tv_programs["projects"] = [
               project for project in tv_programs["projects"]
               if project.get("collection") != "makhmak"
@@ -161,6 +172,37 @@ jobs:
                   "image": f"https://i.ytimg.com/vi/{makhmak_id}/hqdefault.jpg",
                   "imageFallback": "assets/on-e.webp",
                   "youtube": makhmak_id,
+                  "badge": "Watch Video",
+              }],
+          }
+
+          bedaya_id = "3e-CpvJaMIg"
+          bedaya_title = "Program Bedaya"
+          tv_programs["projects"] = [
+              project for project in tv_programs["projects"]
+              if project.get("collection") != "bedaya"
+          ]
+          tv_programs["projects"].append({
+              "title": bedaya_title,
+              "subtitle": "TV Program · Video Collection",
+              "index": "TV08",
+              "image": f"https://i.ytimg.com/vi/{bedaya_id}/hqdefault.jpg",
+              "imageFallback": "assets/on-e.webp",
+              "collection": "bedaya",
+              "badge": "Open Collection",
+          })
+          tv_programs.setdefault("collections", {})["bedaya"] = {
+              "title": bedaya_title,
+              "kicker": "TV Program",
+              "description": "Selected work from Program Bedaya.",
+              "cover": f"https://i.ytimg.com/vi/{bedaya_id}/hqdefault.jpg",
+              "projects": [{
+                  "title": yt_title(bedaya_id, "Program Bedaya — Video 01"),
+                  "subtitle": "Program Bedaya · TV Program Edit",
+                  "index": "BD01",
+                  "image": f"https://i.ytimg.com/vi/{bedaya_id}/hqdefault.jpg",
+                  "imageFallback": "assets/on-e.webp",
+                  "youtube": bedaya_id,
                   "badge": "Watch Video",
               }],
           }
