@@ -68,7 +68,7 @@ jobs:
             mv "${temp}" "${file}"
           done
 
-      - name: Apply portfolio and video-player fixes
+      - name: Apply portfolio updates
         shell: bash
         run: |
           set -euo pipefail
@@ -78,17 +78,53 @@ jobs:
           import urllib.parse
           import urllib.request
 
+          def fetch_json(url):
+              req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+              with urllib.request.urlopen(req, timeout=15) as response:
+                  return json.load(response)
+
           def yt_title(video_id, fallback):
               try:
                   watch = f"https://www.youtube.com/watch?v={video_id}"
                   url = "https://www.youtube.com/oembed?" + urllib.parse.urlencode({"url": watch, "format": "json"})
-                  req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-                  with urllib.request.urlopen(req, timeout=12) as response:
-                      data = json.load(response)
-                  title = str(data.get("title", "")).strip()
+                  title = str(fetch_json(url).get("title", "")).strip()
                   return title or fallback
               except Exception:
                   return fallback
+
+          def yt_project(video_id, fallback, subtitle, index, badge="Watch Video"):
+              return {
+                  "title": yt_title(video_id, fallback),
+                  "subtitle": subtitle,
+                  "index": index,
+                  "image": f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg",
+                  "imageFallback": "assets/on-e.webp",
+                  "youtube": video_id,
+                  "badge": badge,
+              }
+
+          def vimeo_meta(video_id, fallback):
+              try:
+                  url = "https://vimeo.com/api/oembed.json?" + urllib.parse.urlencode({"url": f"https://vimeo.com/{video_id}"})
+                  data = fetch_json(url)
+                  return {
+                      "title": str(data.get("title", "")).strip() or fallback,
+                      "thumbnail": str(data.get("thumbnail_url", "")).strip() or "assets/on-e.webp",
+                  }
+              except Exception:
+                  return {"title": fallback, "thumbnail": "assets/on-e.webp"}
+
+          def vimeo_project(video_id, fallback, subtitle, index):
+              meta = vimeo_meta(video_id, fallback)
+              return {
+                  "title": meta["title"],
+                  "subtitle": subtitle,
+                  "index": index,
+                  "image": meta["thumbnail"],
+                  "imageFallback": "assets/on-e.webp",
+                  "vimeo": video_id,
+                  "badge": "Watch Video",
+              }
 
           script_path = Path("script.js")
           text = script_path.read_text(encoding="utf-8")
@@ -100,6 +136,7 @@ jobs:
               raw_json = raw_json[:-1].rstrip()
           data = json.loads(raw_json)
 
+          # Abu Al-Arousa — Haytan Beitna
           haytan_id = "hyYa8IUSJJc"
           data["series"]["projects"][1] = {
               "title": yt_title(haytan_id, "Abu Al-Arousa — Haytan Beitna"),
@@ -111,6 +148,7 @@ jobs:
               "badge": "Watch Video",
           }
 
+          # Keep the second institutional music video fixed.
           institutional_id = "SIndjl5ZIL0"
           if len(data.get("institutional", {}).get("projects", [])) > 1:
               data["institutional"]["projects"][1] = {
@@ -123,35 +161,69 @@ jobs:
                   "badge": "Watch Music Video",
               }
 
-          tv_programs = data["tv-programs"]
+          tv = data["tv-programs"]
+          tv.setdefault("collections", {})
 
-          program_name = "Bel Quran Ehtadayt — Kuwait"
-          for project in tv_programs["projects"]:
-              if project.get("collection") == "bil-quran-ihtadayt":
-                  project["title"] = program_name
-          collection = tv_programs["collections"]["bil-quran-ihtadayt"]
-          collection["title"] = program_name
-          collection["description"] = f"Selected episodes and edits from the television program {program_name}."
-          for project in collection["projects"]:
-              project["subtitle"] = f"{program_name} · TV Program Edit"
-
+          # Kuwait labels.
+          quran_name = "Bel Quran Ehtadayt — Kuwait"
           faseero_name = "Faseero — Kuwait"
-          for project in tv_programs["projects"]:
-              if project.get("collection") == "faseero":
+          for project in tv["projects"]:
+              if project.get("collection") == "bil-quran-ihtadayt":
+                  project["title"] = quran_name
+              elif project.get("collection") == "faseero":
                   project["title"] = faseero_name
-          faseero_collection = tv_programs["collections"]["faseero"]
-          faseero_collection["title"] = faseero_name
-          faseero_collection["description"] = f"Selected work from {faseero_name}."
-          for project in faseero_collection["projects"]:
-              project["subtitle"] = f"{faseero_name} · TV Program Edit"
+          if "bil-quran-ihtadayt" in tv["collections"]:
+              collection = tv["collections"]["bil-quran-ihtadayt"]
+              collection["title"] = quran_name
+              collection["description"] = f"Selected episodes and edits from {quran_name}."
+              for project in collection.get("projects", []):
+                  project["subtitle"] = f"{quran_name} · TV Program Edit"
+          if "faseero" in tv["collections"]:
+              collection = tv["collections"]["faseero"]
+              collection["title"] = faseero_name
+              collection["description"] = f"Selected work from {faseero_name}."
+              for project in collection.get("projects", []):
+                  project["subtitle"] = f"{faseero_name} · TV Program Edit"
 
+          # ON E — preserve existing main card and replace collection with the requested complete set.
+          on_ids = [
+              "8SzWYjluCpw",
+              "K6EtzANGU5k",
+              "3UO9CNQP_mo",
+              "c7KL8K4AWGw",
+              "DmXmEbeisiA",
+              "V7OMgvsGFYQ",
+              "nbpsCCxjxkM",
+              "4D7S9MiCszM",
+          ]
+          on_projects = []
+          for i, video_id in enumerate(on_ids, 1):
+              on_projects.append(yt_project(video_id, f"ON E — Video {i:02d}", "ON E · TV Program Edit", f"ON{i:02d}"))
+          on_projects.append(vimeo_project("813971630", "ON E — Vimeo 01", "ON E · TV Program Edit", "ON09"))
+          on_projects.append(vimeo_project("813971433", "ON E — Vimeo 02", "ON E · TV Program Edit", "ON10"))
+          tv["collections"]["on-e"] = {
+              "title": "ON E Channel",
+              "kicker": "TV Program",
+              "description": "Selected ON E television editing work.",
+              "cover": f"https://i.ytimg.com/vi/{on_ids[0]}/hqdefault.jpg",
+              "projects": on_projects,
+          }
+          for project in tv["projects"]:
+              if project.get("collection") == "on-e" or project.get("title") == "ON E Channel":
+                  project.update({
+                      "title": "ON E Channel",
+                      "subtitle": "TV Programs · Video Collection",
+                      "image": f"https://i.ytimg.com/vi/{on_ids[0]}/hqdefault.jpg",
+                      "imageFallback": "assets/on-e.webp",
+                      "collection": "on-e",
+                      "badge": "Open Collection",
+                  })
+
+          # MAKHMAK — SHASHA Kuwait.
           makhmak_id = "mkJ6DVwDMjQ"
           makhmak_title = "Program MAKHMAK — Platform SHASHA Kuwait"
-          tv_programs["projects"] = [
-              project for project in tv_programs["projects"]
-              if project.get("collection") != "makhmak"
-          ]
-          tv_programs["projects"].append({
+          tv["projects"] = [p for p in tv["projects"] if p.get("collection") != "makhmak"]
+          tv["projects"].append({
               "title": makhmak_title,
               "subtitle": "TV Program · SHASHA Kuwait",
               "index": "TV07",
@@ -160,30 +232,19 @@ jobs:
               "collection": "makhmak",
               "badge": "Open Collection",
           })
-          tv_programs.setdefault("collections", {})["makhmak"] = {
+          tv["collections"]["makhmak"] = {
               "title": makhmak_title,
               "kicker": "TV Program",
               "description": "Selected work from MAKHMAK on SHASHA Kuwait.",
               "cover": f"https://i.ytimg.com/vi/{makhmak_id}/hqdefault.jpg",
-              "projects": [{
-                  "title": yt_title(makhmak_id, "MAKHMAK — SHASHA Kuwait"),
-                  "subtitle": "MAKHMAK · SHASHA Kuwait · Video Editing",
-                  "index": "MK01",
-                  "image": f"https://i.ytimg.com/vi/{makhmak_id}/hqdefault.jpg",
-                  "imageFallback": "assets/on-e.webp",
-                  "youtube": makhmak_id,
-                  "badge": "Watch Video",
-              }],
+              "projects": [yt_project(makhmak_id, "MAKHMAK — SHASHA Kuwait", "MAKHMAK · SHASHA Kuwait · Video Editing", "MK01")],
           }
 
+          # Program Bedaya.
           bedaya_id = "3e-CpvJaMIg"
-          bedaya_title = "Program Bedaya"
-          tv_programs["projects"] = [
-              project for project in tv_programs["projects"]
-              if project.get("collection") != "bedaya"
-          ]
-          tv_programs["projects"].append({
-              "title": bedaya_title,
+          tv["projects"] = [p for p in tv["projects"] if p.get("collection") != "bedaya"]
+          tv["projects"].append({
+              "title": "Program Bedaya",
               "subtitle": "TV Program · Video Collection",
               "index": "TV08",
               "image": f"https://i.ytimg.com/vi/{bedaya_id}/hqdefault.jpg",
@@ -191,29 +252,93 @@ jobs:
               "collection": "bedaya",
               "badge": "Open Collection",
           })
-          tv_programs.setdefault("collections", {})["bedaya"] = {
-              "title": bedaya_title,
+          tv["collections"]["bedaya"] = {
+              "title": "Program Bedaya",
               "kicker": "TV Program",
               "description": "Selected work from Program Bedaya.",
               "cover": f"https://i.ytimg.com/vi/{bedaya_id}/hqdefault.jpg",
+              "projects": [yt_project(bedaya_id, "Program Bedaya — Video 01", "Program Bedaya · TV Program Edit", "BD01")],
+          }
+
+          # Al Ahly collection with FIBA African Basketball Championship promo.
+          fiba_id = "N4uGPUETGb4"
+          sports = data["sports-events"]
+          sports.setdefault("collections", {})
+          for project in sports["projects"]:
+              if project.get("title") == "Al Ahly Club" or project.get("collection") == "al-ahly":
+                  project.update({
+                      "title": "Al Ahly Club",
+                      "subtitle": "Sports Content · Video Collection",
+                      "index": "SE01",
+                      "image": "assets/al-ahly.webp",
+                      "collection": "al-ahly",
+                      "badge": "Open Collection",
+                  })
+                  project.pop("video", None)
+                  project.pop("youtube", None)
+          sports["collections"]["al-ahly"] = {
+              "title": "Al Ahly Club",
+              "kicker": "Sports",
+              "description": "Selected sports promos and content created for Al Ahly Club.",
+              "cover": "assets/al-ahly.webp",
               "projects": [{
-                  "title": yt_title(bedaya_id, "Program Bedaya — Video 01"),
-                  "subtitle": "Program Bedaya · TV Program Edit",
-                  "index": "BD01",
-                  "image": f"https://i.ytimg.com/vi/{bedaya_id}/hqdefault.jpg",
-                  "imageFallback": "assets/on-e.webp",
-                  "youtube": bedaya_id,
-                  "badge": "Watch Video",
+                  "title": "Promo | FIBA African Basketball Championship",
+                  "subtitle": "Al Ahly Club · Sports Promo · Video Editing",
+                  "index": "AH01",
+                  "image": f"https://i.ytimg.com/vi/{fiba_id}/hqdefault.jpg",
+                  "imageFallback": "assets/al-ahly.webp",
+                  "youtube": fiba_id,
+                  "badge": "Watch Promo",
               }],
+          }
+
+          # Good News as a standalone category.
+          good_news_id = "LLD5p0yP0fI"
+          data["good-news"] = {
+              "title": "Good News",
+              "kicker": "Production & Entertainment",
+              "description": "Selected editing work created for Good News.",
+              "cover": f"https://i.ytimg.com/vi/{good_news_id}/hqdefault.jpg",
+              "projects": [yt_project(good_news_id, "Good News — Video 01", "Good News · Video Editing", "GN01")],
           }
 
           updated = json.dumps(data, ensure_ascii=False, indent=2)
           text = text[:start] + updated + ";\n\n" + text[function_start:]
 
+          # Extend project cards to support Vimeo.
+          text = text.replace(
+              "const hasPlayable = Boolean(project.video || project.youtube);",
+              "const hasPlayable = Boolean(project.video || project.youtube || project.vimeo);"
+          )
+          old_youtube_attrs = "  } else if (project.youtube) {\n    attrs = ` data-youtube=\"${escapeHTML(project.youtube)}\" data-title=\"${escapeHTML(project.title)}\" role=\"button\" tabindex=\"0\" aria-label=\"Play ${escapeHTML(project.title)}\"`;\n  }"
+          new_youtube_attrs = "  } else if (project.youtube) {\n    attrs = ` data-youtube=\"${escapeHTML(project.youtube)}\" data-title=\"${escapeHTML(project.title)}\" role=\"button\" tabindex=\"0\" aria-label=\"Play ${escapeHTML(project.title)}\"`;\n  } else if (project.vimeo) {\n    attrs = ` data-vimeo=\"${escapeHTML(project.vimeo)}\" data-title=\"${escapeHTML(project.title)}\" role=\"button\" tabindex=\"0\" aria-label=\"Play ${escapeHTML(project.title)}\"`;\n  }"
+          if old_youtube_attrs in text:
+              text = text.replace(old_youtube_attrs, new_youtube_attrs, 1)
+
+          # Local player controls: seek enabled, download UI hidden where supported.
           player_marker = "const videoPlayer = document.getElementById('project-video-player');"
           player_setup = "const videoPlayer = document.getElementById('project-video-player');\nif (videoPlayer) {\n  videoPlayer.controls = true;\n  videoPlayer.preload = 'auto';\n  videoPlayer.setAttribute('controlsList', 'nodownload noremoteplayback');\n  videoPlayer.disablePictureInPicture = true;\n  videoPlayer.addEventListener('contextmenu', event => event.preventDefault());\n}"
           if player_marker in text and "controlsList', 'nodownload noremoteplayback'" not in text:
               text = text.replace(player_marker, player_setup, 1)
+
+          # Allow Vimeo through the same external iframe used for YouTube.
+          text = text.replace(
+              "if (!videoModal || !videoTitle || (!card.dataset.video && !card.dataset.youtube)) return;",
+              "if (!videoModal || !videoTitle || (!card.dataset.video && !card.dataset.youtube && !card.dataset.vimeo)) return;"
+          )
+          old_open_branch = "  if (card.dataset.youtube && youtubePlayer) {\n    const videoId = encodeURIComponent(card.dataset.youtube);\n    youtubePlayer.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&playsinline=1`;\n    youtubePlayer.hidden = false;\n    videoModal.classList.add('youtube-video');\n  } else if (card.dataset.video && videoPlayer) {"
+          new_open_branch = "  if (card.dataset.youtube && youtubePlayer) {\n    const videoId = encodeURIComponent(card.dataset.youtube);\n    youtubePlayer.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&playsinline=1`;\n    youtubePlayer.hidden = false;\n    videoModal.classList.add('youtube-video');\n  } else if (card.dataset.vimeo && youtubePlayer) {\n    const videoId = encodeURIComponent(card.dataset.vimeo);\n    youtubePlayer.src = `https://player.vimeo.com/video/${videoId}?autoplay=1&title=0&byline=0&portrait=0`;\n    youtubePlayer.hidden = false;\n    videoModal.classList.add('youtube-video');\n  } else if (card.dataset.video && videoPlayer) {"
+          if old_open_branch in text:
+              text = text.replace(old_open_branch, new_open_branch, 1)
+
+          text = text.replace(
+              "if (card.matches('a') && !card.dataset.video && !card.dataset.youtube) return;",
+              "if (card.matches('a') && !card.dataset.video && !card.dataset.youtube && !card.dataset.vimeo) return;"
+          )
+          text = text.replace(
+              "if (card.dataset.video || card.dataset.youtube) {",
+              "if (card.dataset.video || card.dataset.youtube || card.dataset.vimeo) {"
+          )
 
           old_local = "  } else if (card.dataset.video && videoPlayer) {\n    videoPlayer.src = card.dataset.video;\n    videoPlayer.poster = card.dataset.poster || '';\n    videoPlayer.hidden = false;\n  }"
           new_local = "  } else if (card.dataset.video && videoPlayer) {\n    videoPlayer.src = card.dataset.video;\n    videoPlayer.poster = card.dataset.poster || '';\n    videoPlayer.preload = 'auto';\n    videoPlayer.hidden = false;\n    videoPlayer.load();\n  }"
@@ -222,12 +347,26 @@ jobs:
 
           script_path.write_text(text, encoding="utf-8")
 
+          # Homepage: Good News category card + client name + video-player attributes.
           index_path = Path("index.html")
           html = index_path.read_text(encoding="utf-8")
+
+          if 'href="index.html?category=good-news"' not in html:
+              category_anchor = '<a class="category-card reveal category-link" href="index.html?category=motion-graphics"><span class="category-icon">◇</span><h3>Motion Graphics<br>&amp; 3D</h3><p>Titles, graphics and visual systems.</p><span class="category-action">View Projects →</span></a>'
+              good_news_card = category_anchor + '\n        <a class="category-card reveal category-link" href="index.html?category=good-news"><span class="category-icon">★</span><h3>Good News</h3><p>Selected production and entertainment edits.</p><span class="category-action">View Projects →</span></a>'
+              if category_anchor in html:
+                  html = html.replace(category_anchor, good_news_card, 1)
+              else:
+                  html = html.replace('</div>\n    </section>\n\n    <section class="section showreel-section"', '<a class="category-card reveal category-link" href="index.html?category=good-news"><span class="category-icon">★</span><h3>Good News</h3><p>Selected production and entertainment edits.</p><span class="category-action">View Projects →</span></a>\n      </div>\n    </section>\n\n    <section class="section showreel-section"', 1)
+
+          if '<span>GOOD NEWS</span>' not in html:
+              html = html.replace('<span>MISR AL KHAIR</span>', '<span>MISR AL KHAIR</span>\n        <span>GOOD NEWS</span>', 1)
+
           old_tag = '<video id="project-video-player" controls playsinline preload="metadata"></video>'
           new_tag = '<video id="project-video-player" controls playsinline preload="auto" controlslist="nodownload noremoteplayback" disablepictureinpicture oncontextmenu="return false;"></video>'
           if old_tag in html:
               html = html.replace(old_tag, new_tag, 1)
+
           index_path.write_text(html, encoding="utf-8")
           PY
 
