@@ -1,11 +1,14 @@
 from pathlib import Path
+import json
 import re
 
 index_path = Path("index.html")
 styles_path = Path("styles.css")
+script_path = Path("script.js")
 
 html = index_path.read_text(encoding="utf-8")
 styles = styles_path.read_text(encoding="utf-8")
+script = script_path.read_text(encoding="utf-8")
 
 clients = [
     "Al-Ahram Agency",
@@ -18,7 +21,9 @@ clients = [
     "Al Ahly Club",
     "CBC Channel",
     "Cairo International Film Festival",
+    "Egypt Air",
     "Egyptian Countryside",
+    "Egyptian Television",
     "EL Nahar TV",
     "El Gouna Film Festival",
     "Good News",
@@ -43,36 +48,113 @@ clients = [
     "AlWathaeqya Channel",
     "Kuwait Television",
     "Shasha Platform",
-    "Egyptian Television",
 ]
 
-row_one = clients[::2]
-row_two = clients[1::2]
+# -----------------------------------------------------------------------------
+# Separate ON E from TV Programs and make it a standalone portfolio category.
+# -----------------------------------------------------------------------------
+marker = "const categoryData = "
+start = script.index(marker) + len(marker)
+function_start = script.index("function escapeHTML", start)
+raw_json = script[start:function_start].rstrip()
+if raw_json.endswith(";"):
+    raw_json = raw_json[:-1].rstrip()
+
+data = json.loads(raw_json)
+tv = data.get("tv-programs", {})
+tv_projects = tv.get("projects", [])
+tv_collections = tv.get("collections", {})
+on_collection = tv_collections.get("on-e")
+
+if on_collection:
+    data["on-e-channel"] = {
+        "title": "ON E Channel",
+        "kicker": "TV Channel",
+        "description": "Selected channel promos, television edits and broadcast work for ON E Channel.",
+        "cover": on_collection.get("cover", "assets/on-e.webp"),
+        "projects": on_collection.get("projects", []),
+    }
+
+    tv["projects"] = [
+        project for project in tv_projects
+        if project.get("collection") != "on-e" and project.get("title") != "ON E Channel"
+    ]
+    tv_collections.pop("on-e", None)
+
+    # Keep TV card numbering clean after removing ON E.
+    for i, project in enumerate(tv.get("projects", []), 1):
+        project["index"] = f"TV{i:02d}"
+
+updated = json.dumps(data, ensure_ascii=False, indent=2)
+script = script[:start] + updated + ";\n\n" + script[function_start:]
+script_path.write_text(script, encoding="utf-8")
+
+# Add a standalone ON E card to Work Categories if it is not already there.
+if 'href="index.html?category=on-e-channel"' not in html:
+    tv_card_pattern = re.compile(
+        r'(<a class="category-card reveal category-link" href="index\.html\?category=tv-programs">.*?</a>)',
+        re.S,
+    )
+    on_e_card = (
+        '<a class="category-card reveal category-link" href="index.html?category=on-e-channel">'
+        '<span class="category-icon">▦</span>'
+        '<h3>ON E<br>Channel</h3>'
+        '<p>Channel promos, broadcast edits and television content.</p>'
+        '<span class="category-action">View Projects →</span>'
+        '</a>'
+    )
+    html, count = tv_card_pattern.subn(lambda m: m.group(1) + "\n        " + on_e_card, html, count=1)
+    if count != 1:
+        raise SystemExit("Could not find TV Programs category card to insert ON E Channel")
+
+# Make the Selected Work ON E card open the new standalone category.
+def update_selected_on_e(match):
+    block = match.group(0)
+    if "<h3>ON E Channel</h3>" in block:
+        block = re.sub(
+            r'href="index\.html\?category=[^"]+"',
+            'href="index.html?category=on-e-channel"',
+            block,
+            count=1,
+        )
+    return block
+
+html = re.sub(
+    r'<a class="project-card reveal project-link-card".*?</a>',
+    update_selected_on_e,
+    html,
+    flags=re.S,
+)
+
+# -----------------------------------------------------------------------------
+# Cinematic three-row client wall.
+# -----------------------------------------------------------------------------
+rows = [clients[i::3] for i in range(3)]
 
 def group_markup(items, hidden=False):
     hidden_attr = ' aria-hidden="true"' if hidden else ''
     chips = "\n".join(f'            <span class="client-name">{name}</span>' for name in items)
     return f'          <div class="client-group"{hidden_attr}>\n{chips}\n          </div>'
 
+row_markup = []
+for i, row in enumerate(rows, 1):
+    direction = "left" if i != 2 else "right"
+    row_markup.append(
+        f'''        <div class="client-marquee client-marquee-{direction} client-row-{i}" aria-label="Selected clients row {i}">
+          <div class="client-track">
+{group_markup(row)}
+{group_markup(row, True)}
+          </div>
+        </div>'''
+    )
+
 replacement = f'''<!-- CLIENT WALL START -->
 <div class="client-wall reveal" aria-label="Selected clients">
         <div class="client-wall-intro">
-          <strong>35+ CLIENTS</strong>
           <span>TV NETWORKS · PRODUCTION HOUSES · INSTITUTIONS · BRANDS</span>
           <small>EGYPT · KUWAIT · SAUDI ARABIA · REGIONAL PRODUCTIONS</small>
         </div>
-        <div class="client-marquee client-marquee-left" aria-label="Selected clients row one">
-          <div class="client-track">
-{group_markup(row_one)}
-{group_markup(row_one, True)}
-          </div>
-        </div>
-        <div class="client-marquee client-marquee-right" aria-label="Selected clients row two">
-          <div class="client-track">
-{group_markup(row_two)}
-{group_markup(row_two, True)}
-          </div>
-        </div>
+{chr(10).join(row_markup)}
       </div>
 <!-- CLIENT WALL END -->'''
 
@@ -94,7 +176,7 @@ else:
 
 index_path.write_text(html, encoding="utf-8")
 
-# Remove the previous client-grid/client-wall injected CSS, then append the new wall styling.
+# Remove earlier injected client styling before appending the current version.
 for start_marker, end_marker in [
     ("/* CLIENT GRID START */", "/* CLIENT GRID END */"),
     ("/* CLIENT WALL START */", "/* CLIENT WALL END */"),
@@ -116,51 +198,26 @@ client_css = r'''
   overflow: hidden;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
-  padding: 28px 0 30px;
+  padding: 26px 0 28px;
   position: relative;
 }
 
+/* No edge fades: client names remain crisp instead of looking erased. */
 .client-wall::before,
 .client-wall::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: clamp(36px, 7vw, 120px);
-  z-index: 4;
-  pointer-events: none;
-}
-
-.client-wall::before {
-  left: 0;
-  background: linear-gradient(90deg, var(--bg), transparent);
-}
-
-.client-wall::after {
-  right: 0;
-  background: linear-gradient(270deg, var(--bg), transparent);
+  display: none !important;
 }
 
 .client-wall-intro {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: end;
-  gap: 18px;
-  padding: 0 4px 24px;
-}
-
-.client-wall-intro strong {
-  font-family: var(--display);
-  font-size: clamp(40px, 5vw, 72px);
-  line-height: .9;
-  font-weight: 400;
-  color: var(--text);
-  letter-spacing: .025em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 0 28px 22px;
 }
 
 .client-wall-intro span,
 .client-wall-intro small {
-  color: var(--muted);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: .13em;
@@ -172,18 +229,20 @@ client_css = r'''
 }
 
 .client-wall-intro small {
+  color: var(--muted);
   text-align: right;
 }
 
 .client-marquee {
   position: relative;
   overflow: hidden;
-  width: 100%;
+  width: calc(100% - 40px);
+  margin-inline: 20px;
   padding: 6px 0;
 }
 
 .client-marquee + .client-marquee {
-  margin-top: 8px;
+  margin-top: 7px;
 }
 
 .client-track {
@@ -200,16 +259,16 @@ client_css = r'''
 
 .client-name {
   flex: 0 0 auto;
-  min-height: 64px;
+  min-height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 28px;
+  padding: 0 27px;
   border: 1px solid rgba(255,255,255,.14);
   background: rgba(255,255,255,.018);
   color: #c8c8c5;
   font-family: var(--display);
-  font-size: clamp(18px, 1.7vw, 26px);
+  font-size: clamp(17px, 1.55vw, 24px);
   letter-spacing: .055em;
   line-height: 1;
   text-transform: uppercase;
@@ -221,17 +280,22 @@ client_css = r'''
   content: "•";
   color: var(--gold);
   font-family: var(--body);
-  font-size: 9px;
+  font-size: 8px;
   margin-right: 12px;
-  opacity: .8;
+  opacity: .85;
 }
 
-.client-marquee-left .client-track {
-  animation: clientScrollLeft 46s linear infinite;
+/* Deliberately slower than the previous two-row version. */
+.client-row-1 .client-track {
+  animation: clientScrollLeft 76s linear infinite;
 }
 
-.client-marquee-right .client-track {
-  animation: clientScrollRight 52s linear infinite;
+.client-row-2 .client-track {
+  animation: clientScrollRight 84s linear infinite;
+}
+
+.client-row-3 .client-track {
+  animation: clientScrollLeft 92s linear infinite;
 }
 
 .client-wall:hover .client-track {
@@ -260,20 +324,11 @@ client_css = r'''
     padding: 22px 0 24px;
   }
 
-  .client-wall::before,
-  .client-wall::after {
-    display: none;
-  }
-
   .client-wall-intro {
-    grid-template-columns: 1fr;
-    align-items: start;
-    gap: 8px;
-    padding-bottom: 18px;
-  }
-
-  .client-wall-intro strong {
-    font-size: 48px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 7px;
+    padding: 0 20px 18px;
   }
 
   .client-wall-intro small {
@@ -281,6 +336,9 @@ client_css = r'''
   }
 
   .client-marquee {
+    width: calc(100% - 20px);
+    margin-left: 20px;
+    margin-right: 0;
     overflow-x: auto;
     scrollbar-width: none;
     scroll-snap-type: x proximity;
@@ -302,9 +360,9 @@ client_css = r'''
   }
 
   .client-name {
-    min-height: 58px;
-    padding: 0 20px;
-    font-size: 20px;
+    min-height: 56px;
+    padding: 0 19px;
+    font-size: 19px;
     scroll-snap-align: start;
   }
 }
