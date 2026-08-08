@@ -68,9 +68,46 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
+          import re
 
           path = Path('index.html')
           html = path.read_text(encoding='utf-8')
+
+          # Homepage Selected Work: use the same Abu Al-Arousa song shown inside Series.
+          song_id = 'hyYa8IUSJJc'
+          pattern = re.compile(
+              r'<article class="project-card reveal project-video"[\s\S]*?data-title="Abu Al-Arousa — Season 2"[\s\S]*?</article>',
+              re.M,
+          )
+          match = pattern.search(html)
+          if match:
+              card = match.group(0)
+              card = re.sub(r'\s*data-video="[^"]*"', '', card, count=1)
+              card = re.sub(r'\s*data-poster="[^"]*"', '', card, count=1)
+              card = card.replace(
+                  'data-title="Abu Al-Arousa — Season 2"',
+                  f'data-youtube="{song_id}"\n          data-title="Abu Al-Arousa — Haytan Beitna"',
+                  1,
+              )
+              card = card.replace(
+                  'aria-label="Play Abu Al-Arousa Season 2 video"',
+                  'aria-label="Play Abu Al-Arousa Haytan Beitna song"',
+                  1,
+              )
+              card = card.replace(
+                  'src="assets/abu-el-arousa.webp"',
+                  f'src="https://i.ytimg.com/vi/{song_id}/hqdefault.jpg"',
+                  1,
+              )
+              card = card.replace(
+                  'alt="Abu Al-Arousa Season 2 editing project"',
+                  'alt="Abu Al-Arousa Haytan Beitna song editing project"',
+                  1,
+              )
+              card = card.replace('<h3>Abu Al-Arousa — Season 2</h3>', '<h3>Abu Al-Arousa — Haytan Beitna</h3>', 1)
+              card = card.replace('<p>TV Series · Video Editing</p>', '<p>Series Song · Video Editing</p>', 1)
+              html = html[:match.start()] + card + html[match.end():]
+
           css_tag = '<link rel="stylesheet" href="i18n-preview.css">'
           js_tag = '<script src="i18n-preview.js"></script>'
           if css_tag not in html:
