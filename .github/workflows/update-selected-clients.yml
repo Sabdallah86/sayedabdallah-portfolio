@@ -64,16 +64,18 @@ jobs:
           path = Path('index.html')
           html = path.read_text(encoding='utf-8')
 
-          replacement = '''<div class="client-strip reveal" aria-label="Selected clients">
-        <span>AL-AHRAM AGENCY</span>
-        <span>57357</span>
-        <span>3DI - YASSER SAMI</span>
-        <span>TERA SOFT</span>
-        <span>MICA EGYPT</span>
-        <span>AL TAHRIR CHANNEL</span>
-        <span>TEN CHANNEL</span>
-        <span>AL AHLY CLUB</span>
-      </div>'''
+          clients = [
+              'AL-AHRAM AGENCY',
+              '57357',
+              '3DI - YASSER SAMI',
+              'TERA SOFT',
+              'MICA EGYPT',
+              'AL TAHRIR CHANNEL',
+              'TEN CHANNEL',
+              'AL AHLY CLUB',
+          ]
+          spans = '\n'.join(f'        <span>{name}</span>' for name in clients)
+          replacement = '<div class="client-strip reveal" aria-label="Selected clients">\n' + spans + '\n      </div>'
 
           pattern = r'<div class="client-strip reveal" aria-label="Selected clients">.*?</div>'
           html, count = re.subn(pattern, replacement, html, count=1, flags=re.S)
