@@ -61,11 +61,30 @@ jobs:
             unzip -o ai-work-for-website.zip -d assets
           fi
 
+      - name: Prepare ON E 11 media
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f on-e-11-for-website.zip ]; then
+            echo "Extracting ON E video 11 media"
+            unzip -o on-e-11-for-website.zip -d assets
+          fi
+
       - name: Apply complete selected clients list
         run: python scripts/update_selected_clients.py
 
       - name: Apply fixed ON E project titles
         run: python scripts/rename_on_e_titles.py
+
+      - name: Apply ON E video 11 when media exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f assets/on-e-11.mp4 ] && [ -f assets/on-e-11.jpg ]; then
+            python scripts/add_on_e_11.py
+          else
+            echo "ON E video 11 media not present yet; leaving ON E unchanged."
+          fi
 
       - name: Apply AI WORK projects when media exists
         shell: bash
