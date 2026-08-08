@@ -65,8 +65,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ -f on-e-11-for-website.zip ]; then
-            echo "Extracting ON E video 11 media"
+          if [ -f on-e-11-hq-for-website.zip ]; then
+            echo "Extracting HQ ON E video 11 media"
+            unzip -o on-e-11-hq-for-website.zip -d assets
+          elif [ -f on-e-11-for-website.zip ]; then
+            echo "Extracting standard ON E video 11 media"
             unzip -o on-e-11-for-website.zip -d assets
           fi
 
