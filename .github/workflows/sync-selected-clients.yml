@@ -55,6 +55,9 @@ jobs:
       - name: Apply complete selected clients list
         run: python scripts/update_selected_clients.py
 
+      - name: Apply fixed ON E project titles
+        run: python scripts/rename_on_e_titles.py
+
       - name: Remove Ramadan 2025 completely
         run: python scripts/remove_ramadan_2025.py
 
