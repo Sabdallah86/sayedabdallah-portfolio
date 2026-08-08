@@ -102,7 +102,7 @@ jobs:
                   "projects": [
                       {"title":"ON E Channel","subtitle":"TV Programs · Video Collection","index":"TV01","image":thumb("8SzWYjluCpw"),"imageFallback":"assets/on-e.webp","collection":"on-e","badge":"Open Collection"},
                       {"title":"Ramadan 2025","subtitle":"TV Promo · Video Editing","index":"TV02","image":"assets/ramadan-2025.webp"},
-                      {"title":"On the Road","subtitle":"TV Program · Video Collection","index":"TV03","image":"assets/on-e.webp","collection":"on-the-road","badge":"Open Collection"},
+                      {"title":"On the Road","subtitle":"TV Program · Video Collection","index":"TV03","image":thumb("fiNaW_oMzCo"),"imageFallback":"assets/on-e.webp","collection":"on-the-road","badge":"Open Collection"},
                       {"title":"ArabWood","subtitle":"Entertainment Program · Video Collection","index":"TV04","image":thumb("sCGh1JRMK3E"),"imageFallback":"assets/on-e.webp","collection":"arabwood","badge":"Open Collection"},
                       {"title":"بالقرآن اهتديت","subtitle":"TV Program · Video Collection","index":"TV05","image":thumb("VPg1fotF0wI"),"imageFallback":"assets/on-e.webp","collection":"bil-quran-ihtadayt","badge":"Open Collection"},
                       {"title":"Faseero","subtitle":"TV Program · Video Collection","index":"TV06","image":thumb("qUToplfiB2s"),"imageFallback":"assets/on-e.webp","collection":"faseero","badge":"Open Collection"},
@@ -118,13 +118,13 @@ jobs:
                       "on-the-road": {
                           "title": "On the Road",
                           "kicker": "TV Program",
-                          "description": "Selected On the Road promos and social edits.",
-                          "cover": "assets/on-e.webp",
+                          "description": "Selected On the Road shorts and social edits.",
+                          "cover": thumb("fiNaW_oMzCo"),
                           "projects": [
-                              {"title":"First Journey","subtitle":"On the Road · Program Promo","index":"OTR01","image":"assets/on-e.webp"},
-                              {"title":"Nelly Karim Teaser","subtitle":"On the Road · Social Promo","index":"OTR02","image":"assets/on-e.webp"},
-                              {"title":"The Road of Life","subtitle":"On the Road · Program Teaser","index":"OTR03","image":"assets/on-e.webp"},
-                              {"title":"Back After 25 Years","subtitle":"On the Road · Launch Promo","index":"OTR04","image":"assets/on-e.webp"},
+                              youtube_project("fiNaW_oMzCo", "On the Road — Short 01", "On the Road · Short Edit", "OTR01"),
+                              youtube_project("_irKRUCkujM", "On the Road — Short 02", "On the Road · Short Edit", "OTR02"),
+                              youtube_project("YA6XVuavmx4", "On the Road — Short 03", "On the Road · Short Edit", "OTR03"),
+                              youtube_project("UkZ7oWR22zk", "On the Road — Short 04", "On the Road · Short Edit", "OTR04"),
                           ],
                       },
                       "arabwood": {
@@ -138,6 +138,9 @@ jobs:
                               {"title":"Emmy Awards 2025","subtitle":"ArabWood · Event Edit","index":"AW03","image":thumb("sCjBAIkHqQw"),"imageFallback":"assets/on-e.webp","youtube":"sCjBAIkHqQw","badge":"Watch Video"},
                               {"title":"Brand Personality","subtitle":"ArabWood · Brand Edit","index":"AW04","image":thumb("Me1dDAzhkVM"),"imageFallback":"assets/on-e.webp","youtube":"Me1dDAzhkVM","badge":"Watch Video"},
                               {"title":"Salma Hayek","subtitle":"ArabWood · Entertainment Edit","index":"AW05","image":thumb("18Ghd_t5W2E"),"imageFallback":"assets/on-e.webp","youtube":"18Ghd_t5W2E","badge":"Watch Video"},
+                              youtube_project("6-UYL8iSvr4", "ArabWood — Short 06", "ArabWood · Short Edit", "AW06"),
+                              youtube_project("BYcajbe-aUU", "ArabWood — Short 07", "ArabWood · Short Edit", "AW07"),
+                              youtube_project("V6ujs3xAFh4", "ArabWood — Short 08", "ArabWood · Short Edit", "AW08"),
                           ],
                       },
                       "bil-quran-ihtadayt": {
