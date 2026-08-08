@@ -108,9 +108,12 @@ jobs:
               card = card.replace('<p>TV Series · Video Editing</p>', '<p>Series Song · Video Editing</p>', 1)
               html = html[:match.start()] + card + html[match.end():]
 
+          bootstrap = """<script>(function(){try{var l=localStorage.getItem('sa-lang')||'en';document.documentElement.lang=l;document.documentElement.dir=l==='ar'?'rtl':'ltr';if(l==='ar'){document.documentElement.classList.add('i18n-pending');setTimeout(function(){document.documentElement.classList.remove('i18n-pending')},1200)}}catch(e){}})();</script>"""
           css_tag = '<link rel="stylesheet" href="i18n-preview.css">'
           js_tag = '<script src="i18n-preview.js"></script>'
-          if css_tag not in html:
+          if bootstrap not in html:
+              html = html.replace('</head>', f'  {bootstrap}\n  {css_tag}\n</head>', 1)
+          elif css_tag not in html:
               html = html.replace('</head>', f'  {css_tag}\n</head>', 1)
           if js_tag not in html:
               html = html.replace('</body>', f'  {js_tag}\n</body>', 1)
