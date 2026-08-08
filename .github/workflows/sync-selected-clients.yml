@@ -52,11 +52,30 @@ jobs:
             curl --fail --location --retry 3 "${base}/assets/${file}" --output "assets/${file}"
           done
 
+      - name: Prepare AI WORK media
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f ai-work-for-website.zip ]; then
+            echo "Extracting AI WORK media"
+            unzip -o ai-work-for-website.zip -d assets
+          fi
+
       - name: Apply complete selected clients list
         run: python scripts/update_selected_clients.py
 
       - name: Apply fixed ON E project titles
         run: python scripts/rename_on_e_titles.py
+
+      - name: Apply AI WORK projects when media exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f assets/ai-work-01.mp4 ] && [ -f assets/ai-work-01.jpg ]; then
+            python scripts/add_ai_work.py
+          else
+            echo "AI WORK media not present yet; leaving current AI section unchanged."
+          fi
 
       - name: Remove Ramadan 2025 completely
         run: python scripts/remove_ramadan_2025.py
