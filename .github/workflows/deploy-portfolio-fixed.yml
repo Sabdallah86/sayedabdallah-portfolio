@@ -133,6 +133,38 @@ jobs:
           for project in collection["projects"]:
               project["subtitle"] = f"{program_name} · TV Program Edit"
 
+          makhmak_id = "mkJ6DVwDMjQ"
+          makhmak_title = "Program MAKHMAK — Platform SHASHA Kuwait"
+          tv_programs = data["tv-programs"]
+          tv_programs["projects"] = [
+              project for project in tv_programs["projects"]
+              if project.get("collection") != "makhmak"
+          ]
+          tv_programs["projects"].append({
+              "title": makhmak_title,
+              "subtitle": "TV Program · SHASHA Kuwait",
+              "index": "TV07",
+              "image": f"https://i.ytimg.com/vi/{makhmak_id}/hqdefault.jpg",
+              "imageFallback": "assets/on-e.webp",
+              "collection": "makhmak",
+              "badge": "Open Collection",
+          })
+          tv_programs.setdefault("collections", {})["makhmak"] = {
+              "title": makhmak_title,
+              "kicker": "TV Program",
+              "description": "Selected work from MAKHMAK on SHASHA Kuwait.",
+              "cover": f"https://i.ytimg.com/vi/{makhmak_id}/hqdefault.jpg",
+              "projects": [{
+                  "title": yt_title(makhmak_id, "MAKHMAK — SHASHA Kuwait"),
+                  "subtitle": "MAKHMAK · SHASHA Kuwait · Video Editing",
+                  "index": "MK01",
+                  "image": f"https://i.ytimg.com/vi/{makhmak_id}/hqdefault.jpg",
+                  "imageFallback": "assets/on-e.webp",
+                  "youtube": makhmak_id,
+                  "badge": "Watch Video",
+              }],
+          }
+
           updated = json.dumps(data, ensure_ascii=False, indent=2)
           text = text[:start] + updated + ";\n\n" + text[function_start:]
 
