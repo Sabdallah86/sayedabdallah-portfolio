@@ -24,7 +24,7 @@ clients = [
     "Egypt Air",
     "Egyptian Countryside",
     "Egyptian Television",
-    "EL Nahar TV",
+    "EL Nahar Channel",
     "El Gouna Film Festival",
     "Good News",
     "Hama Film Production",
