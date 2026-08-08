@@ -136,10 +136,13 @@ jobs:
               raw_json = raw_json[:-1].rstrip()
           data = json.loads(raw_json)
 
-          # Abu Al-Arousa — Haytan Beitna
+          # Final YouTube IDs used across Selected Work and category pages.
           haytan_id = "hyYa8IUSJJc"
+          qowa_id = "2KVyASYThgw"
+
+          # Abu Al-Arousa — Haytan Beitna
           data["series"]["projects"][1] = {
-              "title": yt_title(haytan_id, "Abu Al-Arousa — Haytan Beitna"),
+              "title": "Abu Al-Arousa — Haytan Beitna",
               "subtitle": "Series Song · Video Editing",
               "index": "S02",
               "image": f"https://i.ytimg.com/vi/{haytan_id}/hqdefault.jpg",
@@ -147,6 +150,25 @@ jobs:
               "youtube": haytan_id,
               "badge": "Watch Video",
           }
+
+          # Hospital 57357 — Qowa Fi Alby: restore original YouTube version.
+          institutional_projects = data.get("institutional", {}).get("projects", [])
+          qowa_project = next((p for p in institutional_projects if p.get("index") == "SI01"), None)
+          if qowa_project is None and institutional_projects:
+              qowa_project = institutional_projects[0]
+          if qowa_project is None:
+              raise RuntimeError("Hospital 57357 SI01 project not found")
+          qowa_project.clear()
+          qowa_project.update({
+              "title": "Hospital 57357 — Qowa Fi Alby",
+              "subtitle": "Music Video · Video Editing",
+              "index": "SI01",
+              "image": f"https://i.ytimg.com/vi/{qowa_id}/hqdefault.jpg",
+              "imageFallback": "assets/hospital-57357.webp",
+              "youtube": qowa_id,
+              "badge": "Watch Music Video",
+          })
+          data["institutional"]["cover"] = f"https://i.ytimg.com/vi/{qowa_id}/hqdefault.jpg"
 
           # Keep the second institutional music video fixed.
           institutional_id = "SIndjl5ZIL0"
@@ -347,9 +369,27 @@ jobs:
 
           script_path.write_text(text, encoding="utf-8")
 
-          # Homepage: Good News category card + client name + video-player attributes.
+          # Homepage: final Selected Work YouTube fixes + existing homepage updates.
           index_path = Path("index.html")
           html = index_path.read_text(encoding="utf-8")
+
+          # Abu Al-Arousa Selected Work -> Haytan Beitna YouTube.
+          html = html.replace('data-video="assets/abu-el-arousa.mp4"', f'data-youtube="{haytan_id}"')
+          html = html.replace('data-poster="assets/abu-el-arousa.webp"\n          ', '')
+          html = html.replace('data-title="Abu Al-Arousa — Season 2"', 'data-title="Abu Al-Arousa — Haytan Beitna"')
+          html = html.replace('aria-label="Play Abu Al-Arousa Season 2 video"', 'aria-label="Play Abu Al-Arousa Haytan Beitna video"')
+          html = html.replace('src="assets/abu-el-arousa.webp" alt="Abu Al-Arousa Season 2 editing project"', f'src="https://i.ytimg.com/vi/{haytan_id}/hqdefault.jpg" alt="Abu Al-Arousa Haytan Beitna song edited by Sayed Abdallah"')
+          html = html.replace('<h3>Abu Al-Arousa — Season 2</h3><p>TV Series · Video Editing</p>', '<h3>Abu Al-Arousa — Haytan Beitna</h3><p>Series Song · Video Editing</p>')
+
+          # Qowa Fi Alby Selected Work -> original YouTube video.
+          html = html.replace('data-video="assets/hospital-57357-qewa-fi-alby.mp4"', f'data-youtube="{qowa_id}"')
+          html = html.replace('data-poster="assets/hospital-57357-qewa-fi-alby.webp"\n          ', '')
+          html = html.replace('src="assets/hospital-57357-qewa-fi-alby.webp" alt="Hospital 57357 Qowa Fi Alby music video edited by Sayed Abdallah"', f'src="https://i.ytimg.com/vi/{qowa_id}/hqdefault.jpg" alt="Hospital 57357 Qowa Fi Alby music video edited by Sayed Abdallah"')
+
+          if f'data-youtube="{haytan_id}"' not in html:
+              raise RuntimeError("Abu Al-Arousa YouTube link missing from Selected Work")
+          if f'data-youtube="{qowa_id}"' not in html:
+              raise RuntimeError("Qowa Fi Alby YouTube link missing from Selected Work")
 
           if 'href="index.html?category=good-news"' not in html:
               category_anchor = '<a class="category-card reveal category-link" href="index.html?category=motion-graphics"><span class="category-icon">◇</span><h3>Motion Graphics<br>&amp; 3D</h3><p>Titles, graphics and visual systems.</p><span class="category-action">View Projects →</span></a>'
@@ -371,6 +411,10 @@ jobs:
           PY
 
           node --check script.js
+          grep -q 'data-youtube="hyYa8IUSJJc"' index.html
+          grep -q 'data-youtube="2KVyASYThgw"' index.html
+          grep -q '"youtube": "hyYa8IUSJJc"' script.js
+          grep -q '"youtube": "2KVyASYThgw"' script.js
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
@@ -379,3 +423,23 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy . --project-name=sayedabdallah
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify final production site
+        shell: bash
+        run: |
+          set -euo pipefail
+          final="https://sayedabdallah.pages.dev"
+          for attempt in 1 2 3 4 5 6; do
+            curl --fail --location --silent --show-error "${final}/index.html" -o /tmp/final-index.html || true
+            curl --fail --location --silent --show-error "${final}/script.js" -o /tmp/final-script.js || true
+            if grep -q 'data-youtube="hyYa8IUSJJc"' /tmp/final-index.html 2>/dev/null \
+              && grep -q 'data-youtube="2KVyASYThgw"' /tmp/final-index.html 2>/dev/null \
+              && grep -q '"youtube": "hyYa8IUSJJc"' /tmp/final-script.js 2>/dev/null \
+              && grep -q '"youtube": "2KVyASYThgw"' /tmp/final-script.js 2>/dev/null; then
+              echo "Final production verified successfully."
+              exit 0
+            fi
+            sleep 4
+          done
+          echo "Final production alias did not show both fixes in time."
+          exit 1
