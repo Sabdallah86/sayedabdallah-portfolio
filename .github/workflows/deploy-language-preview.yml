@@ -1,4 +1,4 @@
-name: Deploy bilingual language preview
+name: Deploy English portfolio preview
 
 on:
   push:
@@ -17,7 +17,7 @@ jobs:
       - name: Checkout preview branch
         uses: actions/checkout@v4
 
-      - name: Retrieve current live portfolio
+      - name: Retrieve exact current live portfolio
         shell: bash
         run: |
           set -euo pipefail
@@ -25,11 +25,11 @@ jobs:
           curl --fail --location --retry 3 "${base}/index.html" --output index.html
           curl --fail --location --retry 3 "${base}/script.js" --output script.js
           curl --fail --location --retry 3 "${base}/styles.css" --output styles.css
-          curl --fail --location --retry 3 "${base}/category-pages.css" --output category-pages.css || true
-          curl --fail --location --retry 3 "${base}/favicon.svg" --output favicon.svg || true
-          curl --fail --location --retry 3 "${base}/robots.txt" --output robots.txt || true
+          curl --fail --location --retry 3 "${base}/category-pages.css" --output category-pages.css
+          curl --fail --location --retry 3 "${base}/favicon.svg" --output favicon.svg
+          curl --fail --location --retry 3 "${base}/robots.txt" --output robots.txt
 
-      - name: Download assets referenced by live site
+      - name: Download every local asset referenced by the live site
         shell: bash
         run: |
           set -euo pipefail
@@ -42,87 +42,44 @@ jobs:
           base = 'https://sayedabdallah.pages.dev/'
           source_files = ['index.html', 'script.js', 'styles.css', 'category-pages.css']
           refs = set()
+
           for filename in source_files:
-              path = Path(filename)
-              if not path.exists():
-                  continue
-              text = path.read_text(encoding='utf-8', errors='ignore')
+              text = Path(filename).read_text(encoding='utf-8', errors='ignore')
               refs.update(re.findall(r'assets/[A-Za-z0-9_./-]+\.(?:webp|png|jpg|jpeg|svg|mp4|webm)', text, flags=re.I))
 
           for ref in sorted(refs):
               target = Path(ref)
               target.parent.mkdir(parents=True, exist_ok=True)
               url = urllib.parse.urljoin(base, ref)
-              try:
-                  print(f'Downloading {ref}')
-                  req = urllib.request.Request(url, headers={'User-Agent':'Mozilla/5.0'})
-                  with urllib.request.urlopen(req, timeout=30) as response:
-                      target.write_bytes(response.read())
-              except Exception as exc:
-                  print(f'Warning: could not download {ref}: {exc}')
+              print(f'Downloading {ref}')
+              req = urllib.request.Request(url, headers={'User-Agent':'Mozilla/5.0'})
+              with urllib.request.urlopen(req, timeout=60) as response:
+                  data = response.read()
+              if not data:
+                  raise RuntimeError(f'Empty asset: {ref}')
+              target.write_bytes(data)
+
+          missing = [ref for ref in sorted(refs) if not Path(ref).exists() or Path(ref).stat().st_size == 0]
+          if missing:
+              raise RuntimeError('Missing assets: ' + ', '.join(missing))
+          print(f'Validated {len(refs)} local assets.')
           PY
 
-      - name: Inject bilingual preview layer
+      - name: Validate English site files
         shell: bash
         run: |
           set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-          import re
-
-          path = Path('index.html')
-          html = path.read_text(encoding='utf-8')
-
-          # Homepage Selected Work: use the same Abu Al-Arousa song shown inside Series.
-          song_id = 'hyYa8IUSJJc'
-          pattern = re.compile(
-              r'<article class="project-card reveal project-video"[\s\S]*?data-title="Abu Al-Arousa — Season 2"[\s\S]*?</article>',
-              re.M,
-          )
-          match = pattern.search(html)
-          if match:
-              card = match.group(0)
-              card = re.sub(r'\s*data-video="[^"]*"', '', card, count=1)
-              card = re.sub(r'\s*data-poster="[^"]*"', '', card, count=1)
-              card = card.replace(
-                  'data-title="Abu Al-Arousa — Season 2"',
-                  f'data-youtube="{song_id}"\n          data-title="Abu Al-Arousa — Haytan Beitna"',
-                  1,
-              )
-              card = card.replace(
-                  'aria-label="Play Abu Al-Arousa Season 2 video"',
-                  'aria-label="Play Abu Al-Arousa Haytan Beitna song"',
-                  1,
-              )
-              card = card.replace(
-                  'src="assets/abu-el-arousa.webp"',
-                  f'src="https://i.ytimg.com/vi/{song_id}/hqdefault.jpg"',
-                  1,
-              )
-              card = card.replace(
-                  'alt="Abu Al-Arousa Season 2 editing project"',
-                  'alt="Abu Al-Arousa Haytan Beitna song editing project"',
-                  1,
-              )
-              card = card.replace('<h3>Abu Al-Arousa — Season 2</h3>', '<h3>Abu Al-Arousa — Haytan Beitna</h3>', 1)
-              card = card.replace('<p>TV Series · Video Editing</p>', '<p>Series Song · Video Editing</p>', 1)
-              html = html[:match.start()] + card + html[match.end():]
-
-          bootstrap = """<script>(function(){try{var l=localStorage.getItem('sa-lang')||'en';document.documentElement.lang=l;document.documentElement.dir=l==='ar'?'rtl':'ltr';if(l==='ar'){document.documentElement.classList.add('i18n-pending');setTimeout(function(){document.documentElement.classList.remove('i18n-pending')},1200)}}catch(e){}})();</script>"""
-          css_tag = '<link rel="stylesheet" href="i18n-preview.css">'
-          js_tag = '<script src="i18n-preview.js"></script>'
-          if bootstrap not in html:
-              html = html.replace('</head>', f'  {bootstrap}\n  {css_tag}\n</head>', 1)
-          elif css_tag not in html:
-              html = html.replace('</head>', f'  {css_tag}\n</head>', 1)
-          if js_tag not in html:
-              html = html.replace('</body>', f'  {js_tag}\n</body>', 1)
-          path.write_text(html, encoding='utf-8')
-          PY
           node --check script.js
-          node --check i18n-preview.js
+          if grep -q "i18n-preview" index.html; then
+            echo "Unexpected language-preview code found in index.html"
+            exit 1
+          fi
+          if grep -q "language-switcher" index.html; then
+            echo "Unexpected language switcher found in live HTML"
+            exit 1
+          fi
 
-      - name: Deploy preview to Cloudflare Pages
+      - name: Deploy English preview to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
