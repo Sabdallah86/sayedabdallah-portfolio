@@ -37,7 +37,6 @@ jobs:
             abu-el-arousa.webp
             abu-el-arousa.mp4
             on-e.webp
-            ramadan-2025.webp
             hospital-57357.webp
             showreel.webp
             og-image.webp
@@ -55,6 +54,9 @@ jobs:
 
       - name: Apply complete selected clients list
         run: python scripts/update_selected_clients.py
+
+      - name: Remove Ramadan 2025 completely
+        run: python scripts/remove_ramadan_2025.py
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
