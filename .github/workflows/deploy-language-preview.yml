@@ -35,118 +35,104 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
-          import re
-          import urllib.request
-          import urllib.parse
-
+          import re, urllib.request, urllib.parse
           base = 'https://sayedabdallah.pages.dev/'
-          source_files = ['index.html', 'script.js', 'styles.css', 'category-pages.css']
           refs = set()
-
-          for filename in source_files:
+          for filename in ['index.html', 'script.js', 'styles.css', 'category-pages.css']:
               text = Path(filename).read_text(encoding='utf-8', errors='ignore')
               refs.update(re.findall(r'assets/[A-Za-z0-9_./-]+\.(?:webp|png|jpg|jpeg|svg|mp4|webm)', text, flags=re.I))
-
           for ref in sorted(refs):
               target = Path(ref)
               target.parent.mkdir(parents=True, exist_ok=True)
-              url = urllib.parse.urljoin(base, ref)
-              print(f'Downloading {ref}')
-              req = urllib.request.Request(url, headers={'User-Agent':'Mozilla/5.0'})
+              req = urllib.request.Request(urllib.parse.urljoin(base, ref), headers={'User-Agent':'Mozilla/5.0'})
               with urllib.request.urlopen(req, timeout=60) as response:
                   data = response.read()
               if not data:
                   raise RuntimeError(f'Empty asset: {ref}')
               target.write_bytes(data)
-
-          missing = [ref for ref in sorted(refs) if not Path(ref).exists() or Path(ref).stat().st_size == 0]
-          if missing:
-              raise RuntimeError('Missing assets: ' + ', '.join(missing))
-          print(f'Validated {len(refs)} local assets.')
+          print(f'Validated {len(refs)} downloaded assets.')
           PY
 
-      - name: Apply only the requested English preview fixes
+      - name: Apply only requested English preview fixes
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
-          import re
-          import shutil
+          import re, shutil
 
           youtube_id = 'hyYa8IUSJJc'
           youtube_thumb = f'https://i.ytimg.com/vi/{youtube_id}/hqdefault.jpg'
 
-          # Force fresh Cloudflare asset paths for Qowa Fi Alby so an old/bad cached
-          # preview object cannot be reused.
-          qowa_video_src = Path('assets/hospital-57357-qewa-fi-alby.mp4')
+          # Qowa Fi Alby: determine the REAL poster format instead of trusting the old .webp name.
           qowa_image_src = Path('assets/hospital-57357-qewa-fi-alby.webp')
-          qowa_video_dst = Path('assets/qowa-fi-alby-preview-v2.mp4')
-          qowa_image_dst = Path('assets/qowa-fi-alby-preview-v2.webp')
-          shutil.copyfile(qowa_video_src, qowa_video_dst)
-          shutil.copyfile(qowa_image_src, qowa_image_dst)
+          image_data = qowa_image_src.read_bytes()
+          if image_data.startswith(b'\xff\xd8\xff'):
+              image_ext = 'jpg'
+          elif image_data.startswith(b'\x89PNG\r\n\x1a\n'):
+              image_ext = 'png'
+          elif image_data.startswith(b'RIFF') and b'WEBP' in image_data[:16]:
+              image_ext = 'webp'
+          else:
+              raise RuntimeError('Unknown Qowa Fi Alby poster format: ' + image_data[:16].hex())
 
-          # Basic file-signature checks before deployment.
-          image_head = qowa_image_dst.read_bytes()[:16]
-          video_head = qowa_video_dst.read_bytes()[:64]
-          if b'WEBP' not in image_head:
-              raise RuntimeError('Qowa Fi Alby poster is not a valid WEBP file')
-          if b'ftyp' not in video_head:
-              raise RuntimeError('Qowa Fi Alby video is not a valid MP4 file')
+          qowa_image_path = f'assets/qowa-fi-alby-preview-v3.{image_ext}'
+          qowa_video_path = 'assets/qowa-fi-alby-preview-v3.mp4'
+          Path(qowa_image_path).write_bytes(image_data)
+          shutil.copyfile('assets/hospital-57357-qewa-fi-alby.mp4', qowa_video_path)
+          if b'ftyp' not in Path(qowa_video_path).read_bytes()[:64]:
+              raise RuntimeError('Qowa Fi Alby source video is not a valid MP4')
+          Path('qowa-image-path.txt').write_text(qowa_image_path, encoding='utf-8')
 
+          # Selected Work: Abu Al-Arousa -> YouTube version of Haytan Beitna.
           html_path = Path('index.html')
           html = html_path.read_text(encoding='utf-8')
-
-          # Selected Work: Abu Al-Arousa must use the YouTube version.
-          abu_pattern = re.compile(
-              r'<article class="project-card reveal project-video"\s*\n\s*data-category="TV"[\s\S]*?<span class="project-index">03</span>\s*</div>\s*</article>',
-              re.M,
-          )
+          abu_pattern = re.compile(r'<article class="project-card reveal project-video"\s*\n\s*data-category="TV"[\s\S]*?<span class="project-index">03</span>\s*</div>\s*</article>', re.M)
           abu = abu_pattern.search(html)
           if not abu:
               raise RuntimeError('Could not find Abu Al-Arousa Selected Work card')
-          abu_card = abu.group(0)
-          abu_card = re.sub(r'\s*data-video="[^"]*"', '', abu_card, count=1)
-          abu_card = re.sub(r'\s*data-poster="[^"]*"', '', abu_card, count=1)
-          abu_card = re.sub(r'data-title="[^"]*"', f'data-youtube="{youtube_id}"\n          data-title="Abu Al-Arousa — Haytan Beitna"', abu_card, count=1)
-          abu_card = re.sub(r'aria-label="[^"]*"', 'aria-label="Play Abu Al-Arousa Haytan Beitna on YouTube"', abu_card, count=1)
-          abu_card = re.sub(r'<img src="[^"]*" alt="[^"]*"', f'<img src="{youtube_thumb}" alt="Abu Al-Arousa Haytan Beitna song edited by Sayed Abdallah"', abu_card, count=1)
-          abu_card = re.sub(r'<h3>[^<]*</h3><p>[^<]*</p>', '<h3>Abu Al-Arousa — Haytan Beitna</h3><p>Series Song · Video Editing</p>', abu_card, count=1)
-          html = html[:abu.start()] + abu_card + html[abu.end():]
+          card = abu.group(0)
+          card = re.sub(r'\s*data-video="[^"]*"', '', card, count=1)
+          card = re.sub(r'\s*data-poster="[^"]*"', '', card, count=1)
+          card = re.sub(r'data-title="[^"]*"', f'data-youtube="{youtube_id}"\n          data-title="Abu Al-Arousa — Haytan Beitna"', card, count=1)
+          card = re.sub(r'aria-label="[^"]*"', 'aria-label="Play Abu Al-Arousa Haytan Beitna on YouTube"', card, count=1)
+          card = re.sub(r'<img src="[^"]*" alt="[^"]*"', f'<img src="{youtube_thumb}" alt="Abu Al-Arousa Haytan Beitna song edited by Sayed Abdallah"', card, count=1)
+          card = re.sub(r'<h3>[^<]*</h3><p>[^<]*</p>', '<h3>Abu Al-Arousa — Haytan Beitna</h3><p>Series Song · Video Editing</p>', card, count=1)
+          html = html[:abu.start()] + card + html[abu.end():]
 
-          # Selected Work: Qowa Fi Alby uses fresh preview paths, content unchanged.
-          html = html.replace('assets/hospital-57357-qewa-fi-alby.mp4', 'assets/qowa-fi-alby-preview-v2.mp4')
-          html = html.replace('assets/hospital-57357-qewa-fi-alby.webp', 'assets/qowa-fi-alby-preview-v2.webp')
+          # Selected Work: Qowa Fi Alby -> fresh correctly-typed poster + fresh video path.
+          html = html.replace('assets/hospital-57357-qewa-fi-alby.mp4', qowa_video_path)
+          html = html.replace('assets/hospital-57357-qewa-fi-alby.webp', qowa_image_path)
           html_path.write_text(html, encoding='utf-8')
 
+          # Series page: use same YouTube video as Selected Work.
           script_path = Path('script.js')
           script = script_path.read_text(encoding='utf-8')
-
-          # Series page: use the exact same Abu Al-Arousa YouTube video as Selected Work.
-          series_old = re.compile(
-              r"\{ title:'Abu Al-Arousa — Song', subtitle:'Series Song · Video Editing', index:'S02', image:'assets/abu-el-arousa\.webp', video:'assets/abu-el-arousa\.mp4', badge:'Watch Video' \}"
-          )
+          series_old = re.compile(r"\{ title:'Abu Al-Arousa — Song', subtitle:'Series Song · Video Editing', index:'S02', image:'assets/abu-el-arousa\.webp', video:'assets/abu-el-arousa\.mp4', badge:'Watch Video' \}")
           series_new = "{ title:'Abu Al-Arousa — Haytan Beitna', subtitle:'Series Song · Video Editing', index:'S02', image:'%s', youtube:'%s', badge:'Watch Video' }" % (youtube_thumb, youtube_id)
           script, count = series_old.subn(series_new, script, count=1)
           if count != 1:
               raise RuntimeError('Could not update Abu Al-Arousa Series project')
 
-          # Institutional page: keep Qowa Fi Alby identical, only fresh preview paths.
-          script = script.replace('assets/hospital-57357-qewa-fi-alby.mp4', 'assets/qowa-fi-alby-preview-v2.mp4')
-          script = script.replace('assets/hospital-57357-qewa-fi-alby.webp', 'assets/qowa-fi-alby-preview-v2.webp')
+          # Institutional page: Qowa Fi Alby fresh asset paths.
+          script = script.replace('assets/hospital-57357-qewa-fi-alby.mp4', qowa_video_path)
+          script = script.replace('assets/hospital-57357-qewa-fi-alby.webp', qowa_image_path)
           script_path.write_text(script, encoding='utf-8')
+          print('Qowa poster detected as', image_ext)
           PY
 
       - name: Validate English preview before deployment
         shell: bash
         run: |
           set -euo pipefail
+          qowa_image="$(cat qowa-image-path.txt)"
           node --check script.js
           grep -q 'data-youtube="hyYa8IUSJJc"' index.html
-          grep -q 'qowa-fi-alby-preview-v2.mp4' index.html
+          grep -q 'qowa-fi-alby-preview-v3.mp4' index.html
+          grep -q "$qowa_image" index.html
           grep -q "youtube:'hyYa8IUSJJc'" script.js
-          test -s assets/qowa-fi-alby-preview-v2.mp4
-          test -s assets/qowa-fi-alby-preview-v2.webp
+          test -s assets/qowa-fi-alby-preview-v3.mp4
+          test -s "$qowa_image"
           if grep -q "i18n-preview\|language-switcher" index.html; then
             echo "Unexpected language code found in English preview"
             exit 1
@@ -165,21 +151,22 @@ jobs:
         run: |
           set -euo pipefail
           preview="https://language-preview.sayedabdallah.pages.dev"
+          qowa_image="$(cat qowa-image-path.txt)"
           for attempt in 1 2 3 4 5; do
-            if curl --fail --location --silent --show-error "${preview}/index.html" -o /tmp/preview-index.html; then
-              break
-            fi
+            if curl --fail --location --silent --show-error "${preview}/index.html" -o /tmp/preview-index.html; then break; fi
             sleep 3
           done
           grep -q 'data-youtube="hyYa8IUSJJc"' /tmp/preview-index.html
-          grep -q 'qowa-fi-alby-preview-v2.mp4' /tmp/preview-index.html
-          curl --fail --location --retry 5 --silent --show-error "${preview}/assets/qowa-fi-alby-preview-v2.webp" -o /tmp/qowa.webp
-          curl --fail --location --retry 5 --silent --show-error --range 0-2047 "${preview}/assets/qowa-fi-alby-preview-v2.mp4" -o /tmp/qowa.mp4.part
+          grep -q 'qowa-fi-alby-preview-v3.mp4' /tmp/preview-index.html
+          curl --fail --location --retry 5 --silent --show-error "${preview}/${qowa_image}" -o /tmp/qowa-poster
+          curl --fail --location --retry 5 --silent --show-error --range 0-2047 "${preview}/assets/qowa-fi-alby-preview-v3.mp4" -o /tmp/qowa-video-part
           python - <<'PY'
           from pathlib import Path
-          if b'WEBP' not in Path('/tmp/qowa.webp').read_bytes()[:16]:
-              raise RuntimeError('Deployed Qowa poster failed WEBP validation')
-          if b'ftyp' not in Path('/tmp/qowa.mp4.part').read_bytes()[:64]:
+          poster = Path('/tmp/qowa-poster').read_bytes()
+          valid_image = poster.startswith(b'\xff\xd8\xff') or poster.startswith(b'\x89PNG\r\n\x1a\n') or (poster.startswith(b'RIFF') and b'WEBP' in poster[:16])
+          if not valid_image:
+              raise RuntimeError('Deployed Qowa poster failed image validation')
+          if b'ftyp' not in Path('/tmp/qowa-video-part').read_bytes()[:64]:
               raise RuntimeError('Deployed Qowa video failed MP4 validation')
-          print('Deployed Qowa Fi Alby poster/video and Abu Al-Arousa YouTube card validated.')
+          print('Preview verified: Qowa Fi Alby assets OK; Abu Al-Arousa uses YouTube.')
           PY
