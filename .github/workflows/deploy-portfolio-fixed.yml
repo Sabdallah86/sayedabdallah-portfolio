@@ -25,6 +25,7 @@ jobs:
             --output script.js
           python tools/build_hybrid.py
           python tools/apply_client_logos.py
+          python tools/apply_client_logos_extra.py
           node --check script.js
 
       - name: Retrieve all local media used by the portfolio
@@ -83,14 +84,28 @@ jobs:
           grep -q 'assets/client-logos/satuc.png' index.html
           grep -q 'assets/client-logos/toto-link.png' index.html
           grep -q 'assets/client-logos/on.png' index.html
+          grep -q 'assets/client-logos/al-ahly.png' index.html
+          grep -q 'assets/client-logos/ciff.png' index.html
+          grep -q 'assets/client-logos/square.png' index.html
+          grep -q 'assets/client-logos/kuwait-tv.png' index.html
+          grep -q 'assets/client-logos/sudan-tv.png' index.html
+          grep -q 'assets/client-logos/sada-el-balad.png' index.html
+          grep -q 'assets/client-logos/on-sport.png' index.html
+          grep -q 'assets/client-logos/good-news.png' index.html
+          grep -q 'assets/client-logos/ministry-migration.png' index.html
           grep -q 'Al-Ahram Agency' index.html
           grep -q 'Shasha Platform' index.html
           grep -q '37' index.html
           grep -q 'assets/sayed-abdallah.webp' index.html
           grep -q 'CLIENT LOGO STRIP V2 START' styles.css
+          grep -q 'CLIENT LOGO VISIBILITY FIX V3' styles.css
           test -s assets/client-logos/satuc.png
           test -s assets/client-logos/hospital-57357.png
           test -s assets/client-logos/souad-kafafi.png
+          test -s assets/client-logos/al-ahly.png
+          test -s assets/client-logos/ciff.png
+          test -s assets/client-logos/square.png
+          test -s assets/client-logos/kuwait-tv.png
           ! grep -q 'class="grain"' index.html
           ! grep -q 'Abu Al-Arousa' index.html
           grep -q 'Nader Abbassy — My Guest with Moataz El Demerdash' script.js
@@ -116,7 +131,7 @@ jobs:
           command: pages deploy . --project-name=sayedabdallah --branch=${{ github.ref_name }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Verify deployed site
+      - name: Verify deployed site and actual logo files
         shell: bash
         run: |
           set -euo pipefail
@@ -134,13 +149,24 @@ jobs:
               && grep -q 'data-youtube="2KVyASYThgw"' /tmp/final-index.html 2>/dev/null \
               && grep -q 'clients-logo-section' /tmp/final-index.html 2>/dev/null \
               && grep -q 'assets/client-logos/satuc.png' /tmp/final-index.html 2>/dev/null \
+              && grep -q 'assets/client-logos/al-ahly.png' /tmp/final-index.html 2>/dev/null \
+              && grep -q 'assets/client-logos/square.png' /tmp/final-index.html 2>/dev/null \
+              && grep -q 'assets/client-logos/kuwait-tv.png' /tmp/final-index.html 2>/dev/null \
               && grep -q 'Shasha Platform' /tmp/final-index.html 2>/dev/null \
-              && grep -q 'CLIENT LOGO STRIP V2 START' /tmp/final-styles.css 2>/dev/null \
+              && grep -q 'CLIENT LOGO VISIBILITY FIX V3' /tmp/final-styles.css 2>/dev/null \
               && grep -q 'Nader Abbassy — My Guest with Moataz El Demerdash' /tmp/final-script.js 2>/dev/null; then
-                echo "Hybrid black-gold portfolio with exact client logos verified successfully."
-                exit 0
+                break
             fi
             sleep 4
           done
-          echo "Deployment verification failed."
-          exit 1
+
+          for logo in satuc al-ahly ciff square kuwait-tv sudan-tv sada-el-balad on-sport good-news ministry-migration toto-link hospital-57357; do
+            headers="/tmp/${logo}.headers"
+            body="/tmp/${logo}.body"
+            curl --fail --location --silent --show-error -D "$headers" "${final}/assets/client-logos/${logo}.png" -o "$body"
+            test -s "$body"
+            grep -qi '^content-type: image/' "$headers"
+            echo "Verified live logo asset: ${logo} ($(wc -c < "$body") bytes)"
+          done
+
+          echo "Hybrid black-gold portfolio client logos verified as live image assets."
