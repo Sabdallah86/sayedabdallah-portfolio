@@ -1,0 +1,36 @@
+name: Qowa source diagnostic
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: contains(github.event.issue.title, 'QOWA-DIAGNOSTIC')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check current YouTube ID and search for Qowa Fi Alby
+        shell: bash
+        run: |
+          set +e
+          python -m pip install --quiet yt-dlp
+          echo '=== CURRENT OEMBED ==='
+          curl -sS -D /tmp/current.headers 'https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=2KVyASYThgw&format=json' -o /tmp/current.body
+          cat /tmp/current.headers
+          cat /tmp/current.body
+          echo
+          echo '=== CURRENT THUMB ==='
+          curl -sS -I 'https://i.ytimg.com/vi/2KVyASYThgw/hqdefault.jpg'
+          echo
+          echo '=== ARABIC SEARCH ==='
+          yt-dlp --flat-playlist --skip-download --print '%(id)s | %(title)s | %(url)s' 'ytsearch20:فرقة صوت الشارع قوة في قلبي 57357'
+          echo
+          echo '=== ALT ARABIC SEARCH ==='
+          yt-dlp --flat-playlist --skip-download --print '%(id)s | %(title)s | %(url)s' 'ytsearch20:قوة في قلبي صوت الشارع بدر مصطفى سارة سليم سحاب'
+          echo
+          echo '=== ENGLISH SEARCH ==='
+          yt-dlp --flat-playlist --skip-download --print '%(id)s | %(title)s | %(url)s' 'ytsearch20:Qowa Fi Alby Sout El Share3 Hospital 57357'
+          exit 0
