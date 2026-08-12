@@ -84,6 +84,12 @@ jobs:
           ! grep -q 'Abu Al-Arousa' index.html
           for logo in satuc al-ahly ciff square kuwait-tv sudan-tv sada-el-balad on-sport good-news ministry-migration toto-link hospital-57357; do
             test -s "assets/client-logos/${logo}.png"
+            python - "$logo" <<'PY'
+          import sys
+          from pathlib import Path
+          p = Path('assets/client-logos') / (sys.argv[1] + '.png')
+          assert p.read_bytes().startswith(b'\x89PNG\r\n\x1a\n'), p
+          PY
           done
           node --check script.js
 
@@ -110,21 +116,37 @@ jobs:
         run: |
           set -euo pipefail
           if [ "${GITHUB_REF_NAME}" = "main" ]; then final="https://sayedabdallah.pages.dev"; else final="https://${GITHUB_REF_NAME}.sayedabdallah.pages.dev"; fi
-          ok=0
-          for attempt in 1 2 3 4 5 6 7; do
-            curl --fail --location --silent --show-error "${final}/index.html" -o /tmp/final-index.html || true
-            curl --fail --location --silent --show-error "${final}/styles.css" -o /tmp/final-styles.css || true
+          sleep 8
+          page_ok=0
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            curl --fail --location --silent --show-error "${final}/index.html?build=${GITHUB_SHA}" -o /tmp/final-index.html || true
+            curl --fail --location --silent --show-error "${final}/styles.css?build=${GITHUB_SHA}" -o /tmp/final-styles.css || true
             if grep -q 'class="clients-v3' /tmp/final-index.html 2>/dev/null \
               && grep -q 'assets/client-logos/square.png' /tmp/final-index.html 2>/dev/null \
               && grep -q 'assets/client-logos/al-ahly.png' /tmp/final-index.html 2>/dev/null \
-              && grep -q 'CLIENT LOGO V3 START' /tmp/final-styles.css 2>/dev/null; then ok=1; break; fi
+              && grep -q 'CLIENT LOGO V3 START' /tmp/final-styles.css 2>/dev/null; then page_ok=1; break; fi
             sleep 4
           done
-          test "$ok" = 1
+          test "$page_ok" = 1
+
           for logo in satuc al-ahly ciff square kuwait-tv sudan-tv sada-el-balad on-sport good-news ministry-migration toto-link hospital-57357; do
-            curl --fail --location --silent --show-error -D "/tmp/${logo}.headers" "${final}/assets/client-logos/${logo}.png" -o "/tmp/${logo}.body"
-            test -s "/tmp/${logo}.body"
-            grep -qi '^content-type: image/' "/tmp/${logo}.headers"
+            logo_ok=0
+            for attempt in 1 2 3 4 5 6 7 8; do
+              url="${final}/assets/client-logos/${logo}.png?build=${GITHUB_SHA}"
+              if curl --fail --location --silent --show-error -D "/tmp/${logo}.headers" "$url" -o "/tmp/${logo}.body"; then
+                if test -s "/tmp/${logo}.body" && grep -qi '^content-type: image/' "/tmp/${logo}.headers"; then
+                  if python - "$logo" <<'PY'
+          import sys
+          from pathlib import Path
+          p = Path('/tmp') / (sys.argv[1] + '.body')
+          raise SystemExit(0 if p.read_bytes().startswith(b'\x89PNG\r\n\x1a\n') else 1)
+          PY
+                  then logo_ok=1; break; fi
+                fi
+              fi
+              sleep 4
+            done
+            test "$logo_ok" = 1
             echo "LIVE OK ${logo}: $(wc -c < "/tmp/${logo}.body") bytes"
           done
           echo "CLIENT LOGO V3 LIVE VERIFICATION PASSED"
