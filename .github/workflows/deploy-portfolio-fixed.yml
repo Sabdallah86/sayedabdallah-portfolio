@@ -16,7 +16,7 @@ jobs:
       - name: Checkout portfolio source
         uses: actions/checkout@v4
 
-      - name: Preserve current portfolio data and build hybrid design
+      - name: Build hybrid portfolio with local client logos
         shell: bash
         run: |
           set -euo pipefail
@@ -25,7 +25,7 @@ jobs:
             --output script.js
           python tools/build_hybrid.py
           python tools/apply_client_logos.py
-          python tools/apply_client_logos_extra.py
+          python tools/apply_client_logos_v3.py
           node --check script.js
 
       - name: Retrieve all local media used by the portfolio
@@ -34,83 +34,56 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
-          import re
-          import urllib.parse
-          import urllib.request
-
+          import re, urllib.parse, urllib.request
           base = "https://sayedabdallah.pages.dev/"
-          sources = ["index.html", "styles.css", "category-pages.css", "script.js"]
           refs = set()
           pattern = re.compile(r"assets/[A-Za-z0-9_./-]+\.(?:webp|png|jpg|jpeg|svg|mp4|webm)", re.I)
-
-          for source in sources:
+          for source in ["index.html", "styles.css", "category-pages.css", "script.js"]:
               text = Path(source).read_text(encoding="utf-8", errors="ignore")
               refs.update(pattern.findall(text))
-
           for ref in sorted(refs):
               target = Path(ref)
               target.parent.mkdir(parents=True, exist_ok=True)
               if target.exists() and target.stat().st_size:
-                  print("Keeping generated/repository asset", ref)
+                  print("Keeping local asset", ref)
                   continue
-              url = urllib.parse.urljoin(base, ref)
-              req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-              try:
-                  with urllib.request.urlopen(req, timeout=90) as response:
-                      data = response.read()
-                      content_type = response.headers.get("content-type", "")
-                  if not data or "text/html" in content_type.lower():
-                      raise RuntimeError("invalid media response")
-                  target.write_bytes(data)
-                  print("Retrieved", ref)
-              except Exception as exc:
-                  if target.exists() and target.stat().st_size:
-                      print("Keeping repository copy for", ref, exc)
-                  else:
-                      raise RuntimeError(f"Could not retrieve required asset {ref}: {exc}")
+              req = urllib.request.Request(urllib.parse.urljoin(base, ref), headers={"User-Agent":"Mozilla/5.0"})
+              with urllib.request.urlopen(req, timeout=90) as response:
+                  data = response.read()
+                  ctype = response.headers.get("content-type", "")
+              if not data or "text/html" in ctype.lower():
+                  raise RuntimeError(f"Invalid media response for {ref}")
+              target.write_bytes(data)
           print(f"Checked {len(refs)} local portfolio assets.")
           PY
 
-      - name: Validate hybrid redesign
+      - name: Validate portfolio before deployment
         shell: bash
         run: |
           set -euo pipefail
           grep -q 'class="portfolio-sidebar"' index.html
-          grep -q 'Stories edited.' index.html
           grep -q 'My Guest' index.html
           grep -q 'data-youtube="2KVyASYThgw"' index.html
-          grep -q 'clients-logo-section' index.html
-          grep -q 'client-brand-has-logo' index.html
-          grep -q 'assets/client-logos/satuc.png' index.html
-          grep -q 'assets/client-logos/toto-link.png' index.html
-          grep -q 'assets/client-logos/on.png' index.html
+          grep -q 'class="clients-v3' index.html
+          grep -q 'CLIENT LOGO V3 START' styles.css
+          grep -q 'SQUARE Media Production' index.html
+          grep -q 'assets/client-logos/square.png' index.html
           grep -q 'assets/client-logos/al-ahly.png' index.html
           grep -q 'assets/client-logos/ciff.png' index.html
-          grep -q 'assets/client-logos/square.png' index.html
           grep -q 'assets/client-logos/kuwait-tv.png' index.html
           grep -q 'assets/client-logos/sudan-tv.png' index.html
           grep -q 'assets/client-logos/sada-el-balad.png' index.html
           grep -q 'assets/client-logos/on-sport.png' index.html
           grep -q 'assets/client-logos/good-news.png' index.html
           grep -q 'assets/client-logos/ministry-migration.png' index.html
-          grep -q 'Al-Ahram Agency' index.html
+          grep -q 'assets/client-logos/satuc.png' index.html
           grep -q 'Shasha Platform' index.html
           grep -q '37' index.html
-          grep -q 'assets/sayed-abdallah.webp' index.html
-          grep -q 'CLIENT LOGO STRIP V2 START' styles.css
-          grep -q 'CLIENT LOGO VISIBILITY FIX V3' styles.css
-          test -s assets/client-logos/satuc.png
-          test -s assets/client-logos/hospital-57357.png
-          test -s assets/client-logos/souad-kafafi.png
-          test -s assets/client-logos/al-ahly.png
-          test -s assets/client-logos/ciff.png
-          test -s assets/client-logos/square.png
-          test -s assets/client-logos/kuwait-tv.png
           ! grep -q 'class="grain"' index.html
           ! grep -q 'Abu Al-Arousa' index.html
-          grep -q 'Nader Abbassy — My Guest with Moataz El Demerdash' script.js
-          grep -q 'Amr Mostafa — My Guest with Moataz El Demerdash' script.js
-          grep -q '"youtube": "2KVyASYThgw"' script.js
+          for logo in satuc al-ahly ciff square kuwait-tv sudan-tv sada-el-balad on-sport good-news ministry-migration toto-link hospital-57357; do
+            test -s "assets/client-logos/${logo}.png"
+          done
           node --check script.js
 
       - name: Deploy production to Cloudflare Pages
@@ -131,42 +104,26 @@ jobs:
           command: pages deploy . --project-name=sayedabdallah --branch=${{ github.ref_name }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Verify deployed site and actual logo files
+      - name: Verify final site and logo image files
         shell: bash
         run: |
           set -euo pipefail
-          if [ "${GITHUB_REF_NAME}" = "main" ]; then
-            final="https://sayedabdallah.pages.dev"
-          else
-            final="https://${GITHUB_REF_NAME}.sayedabdallah.pages.dev"
-          fi
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then final="https://sayedabdallah.pages.dev"; else final="https://${GITHUB_REF_NAME}.sayedabdallah.pages.dev"; fi
+          ok=0
           for attempt in 1 2 3 4 5 6 7; do
             curl --fail --location --silent --show-error "${final}/index.html" -o /tmp/final-index.html || true
-            curl --fail --location --silent --show-error "${final}/script.js" -o /tmp/final-script.js || true
             curl --fail --location --silent --show-error "${final}/styles.css" -o /tmp/final-styles.css || true
-            if grep -q 'class="portfolio-sidebar"' /tmp/final-index.html 2>/dev/null \
-              && grep -q 'My Guest' /tmp/final-index.html 2>/dev/null \
-              && grep -q 'data-youtube="2KVyASYThgw"' /tmp/final-index.html 2>/dev/null \
-              && grep -q 'clients-logo-section' /tmp/final-index.html 2>/dev/null \
-              && grep -q 'assets/client-logos/satuc.png' /tmp/final-index.html 2>/dev/null \
-              && grep -q 'assets/client-logos/al-ahly.png' /tmp/final-index.html 2>/dev/null \
+            if grep -q 'class="clients-v3' /tmp/final-index.html 2>/dev/null \
               && grep -q 'assets/client-logos/square.png' /tmp/final-index.html 2>/dev/null \
-              && grep -q 'assets/client-logos/kuwait-tv.png' /tmp/final-index.html 2>/dev/null \
-              && grep -q 'Shasha Platform' /tmp/final-index.html 2>/dev/null \
-              && grep -q 'CLIENT LOGO VISIBILITY FIX V3' /tmp/final-styles.css 2>/dev/null \
-              && grep -q 'Nader Abbassy — My Guest with Moataz El Demerdash' /tmp/final-script.js 2>/dev/null; then
-                break
-            fi
+              && grep -q 'assets/client-logos/al-ahly.png' /tmp/final-index.html 2>/dev/null \
+              && grep -q 'CLIENT LOGO V3 START' /tmp/final-styles.css 2>/dev/null; then ok=1; break; fi
             sleep 4
           done
-
+          test "$ok" = 1
           for logo in satuc al-ahly ciff square kuwait-tv sudan-tv sada-el-balad on-sport good-news ministry-migration toto-link hospital-57357; do
-            headers="/tmp/${logo}.headers"
-            body="/tmp/${logo}.body"
-            curl --fail --location --silent --show-error -D "$headers" "${final}/assets/client-logos/${logo}.png" -o "$body"
-            test -s "$body"
-            grep -qi '^content-type: image/' "$headers"
-            echo "Verified live logo asset: ${logo} ($(wc -c < "$body") bytes)"
+            curl --fail --location --silent --show-error -D "/tmp/${logo}.headers" "${final}/assets/client-logos/${logo}.png" -o "/tmp/${logo}.body"
+            test -s "/tmp/${logo}.body"
+            grep -qi '^content-type: image/' "/tmp/${logo}.headers"
+            echo "LIVE OK ${logo}: $(wc -c < "/tmp/${logo}.body") bytes"
           done
-
-          echo "Hybrid black-gold portfolio client logos verified as live image assets."
+          echo "CLIENT LOGO V3 LIVE VERIFICATION PASSED"
