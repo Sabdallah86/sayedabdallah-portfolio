@@ -1,0 +1,169 @@
+name: Final Selected Work repair
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  repair:
+    if: contains(github.event.issue.title, 'FINAL-SELECTED-WORK-REPAIR')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Retrieve current live portfolio
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://sayedabdallah.pages.dev/'
+          curl --fail --location --retry 3 "${base}index.html" -o index.html
+          curl --fail --location --retry 3 "${base}script.js" -o script.js
+          curl --fail --location --retry 3 "${base}styles.css" -o styles.css
+          curl --fail --location --retry 3 "${base}category-pages.css" -o category-pages.css
+          curl --fail --location --retry 3 "${base}favicon.svg" -o favicon.svg
+          curl --fail --location --retry 3 "${base}robots.txt" -o robots.txt
+
+          python - <<'PY'
+          from pathlib import Path
+          import re, urllib.request, urllib.parse
+          base = 'https://sayedabdallah.pages.dev/'
+          refs = set()
+          for filename in ['index.html','script.js','styles.css','category-pages.css']:
+              text = Path(filename).read_text(encoding='utf-8', errors='ignore')
+              refs.update(re.findall(r'assets/[A-Za-z0-9_./-]+\.(?:webp|png|jpg|jpeg|svg|mp4|webm)', text, flags=re.I))
+          # Old Qowa assets are known broken and are removed from Selected Work below.
+          refs.discard('assets/hospital-57357-qewa-fi-alby.webp')
+          refs.discard('assets/hospital-57357-qewa-fi-alby.mp4')
+          for ref in sorted(refs):
+              target = Path(ref)
+              target.parent.mkdir(parents=True, exist_ok=True)
+              req = urllib.request.Request(urllib.parse.urljoin(base, ref), headers={'User-Agent':'Mozilla/5.0'})
+              with urllib.request.urlopen(req, timeout=60) as response:
+                  data = response.read()
+              if data:
+                  target.write_bytes(data)
+          PY
+
+      - name: Remove wrong Abu card and repair Qowa card
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('index.html')
+          html = path.read_text(encoding='utf-8')
+          qowa_id = '2KVyASYThgw'
+          qowa_thumb = f'https://i.ytimg.com/vi/{qowa_id}/hqdefault.jpg'
+
+          # Work only inside Selected Work section.
+          section_match = re.search(r'(<section[^>]*id="work"[\s\S]*?</section>)', html, re.I)
+          if not section_match:
+              # Fallback: locate section containing SELECTED WORK.
+              section_match = re.search(r'(<section[\s\S]*?SELECTED WORK[\s\S]*?</section>)', html, re.I)
+          if not section_match:
+              raise RuntimeError('Selected Work section not found')
+
+          section = section_match.group(1)
+
+          # Remove the wrong Abu Al-Arousa card completely from Selected Work.
+          cards = list(re.finditer(r'<article\b[\s\S]*?</article>', section, re.I))
+          kept = []
+          removed_abu = 0
+          cursor = 0
+          rebuilt = ''
+          for m in cards:
+              card = m.group(0)
+              rebuilt += section[cursor:m.start()]
+              if re.search(r'Abu\s+Al[- ]Arousa', card, re.I) or '<span class="project-index">03</span>' in card:
+                  removed_abu += 1
+              else:
+                  rebuilt += card
+              cursor = m.end()
+          rebuilt += section[cursor:]
+          section = rebuilt
+          if removed_abu < 1:
+              raise RuntimeError('Wrong Abu Al-Arousa card was not found in Selected Work')
+
+          # Find Qowa/Hospital 57357 card and force it to the working YouTube source.
+          qowa_pattern = re.compile(r'<article\b(?=[\s\S]*?(?:Hospital 57357|Qowa Fi Alby))(?=[\s\S]*?<span class="project-index">06</span>)[\s\S]*?</article>', re.I)
+          qm = qowa_pattern.search(section)
+          if not qm:
+              # Simpler fallback by card index.
+              qowa_pattern = re.compile(r'<article\b[\s\S]*?<span class="project-index">06</span>[\s\S]*?</article>', re.I)
+              qm = qowa_pattern.search(section)
+          if not qm:
+              raise RuntimeError('Qowa Fi Alby Selected Work card not found')
+
+          card = qm.group(0)
+          card = re.sub(r'\sdata-video="[^"]*"', '', card, flags=re.I)
+          card = re.sub(r'\sdata-poster="[^"]*"', '', card, flags=re.I)
+          if re.search(r'\sdata-youtube="[^"]*"', card, re.I):
+              card = re.sub(r'data-youtube="[^"]*"', f'data-youtube="{qowa_id}"', card, count=1, flags=re.I)
+          else:
+              card = re.sub(r'(<article\b[^>]*?)>', rf'\1 data-youtube="{qowa_id}">', card, count=1, flags=re.I)
+          card = re.sub(r'data-title="[^"]*"', 'data-title="Hospital 57357 — Qowa Fi Alby"', card, count=1, flags=re.I)
+          card = re.sub(r'aria-label="[^"]*"', 'aria-label="Play Hospital 57357 Qowa Fi Alby"', card, count=1, flags=re.I)
+          card = re.sub(r'<img\b[^>]*>', f'<img src="{qowa_thumb}" alt="Hospital 57357 Qowa Fi Alby music video edited by Sayed Abdallah" loading="lazy">', card, count=1, flags=re.I)
+          section = section[:qm.start()] + card + section[qm.end():]
+
+          html = html[:section_match.start(1)] + section + html[section_match.end(1):]
+          path.write_text(html, encoding='utf-8')
+
+          # Hard validations before deployment.
+          selected = section
+          if re.search(r'Abu\s+Al[- ]Arousa', selected, re.I):
+              raise RuntimeError('Abu Al-Arousa still appears in Selected Work')
+          if f'data-youtube="{qowa_id}"' not in selected:
+              raise RuntimeError('Qowa YouTube ID missing from Selected Work')
+          if 'hospital-57357-qewa-fi-alby.mp4' in selected or 'hospital-57357-qewa-fi-alby.webp' in selected:
+              raise RuntimeError('Broken Qowa local refs remain in Selected Work')
+          if qowa_thumb not in selected:
+              raise RuntimeError('Qowa YouTube thumbnail missing from Selected Work')
+          PY
+
+          # Confirm the YouTube source and thumbnail are reachable before production deploy.
+          curl --fail --silent --show-error 'https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=2KVyASYThgw&format=json' -o /tmp/qowa.json
+          curl --fail --location --silent --show-error 'https://i.ytimg.com/vi/2KVyASYThgw/hqdefault.jpg' -o /tmp/qowa.jpg
+          test -s /tmp/qowa.jpg
+          node --check script.js
+
+      - name: Deploy repaired site to production
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy . --project-name=sayedabdallah
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify live Selected Work
+        shell: bash
+        run: |
+          set -euo pipefail
+          live='https://sayedabdallah.pages.dev/index.html'
+          for attempt in 1 2 3 4 5 6 7; do
+            curl --fail --location --silent --show-error "$live" -o /tmp/live.html || true
+            python - <<'PY' && exit 0 || true
+          from pathlib import Path
+          import re
+          html = Path('/tmp/live.html').read_text(encoding='utf-8', errors='ignore')
+          m = re.search(r'(<section[^>]*id="work"[\s\S]*?</section>)', html, re.I) or re.search(r'(<section[\s\S]*?SELECTED WORK[\s\S]*?</section>)', html, re.I)
+          if not m:
+              raise SystemExit(1)
+          s = m.group(1)
+          ok = (
+              not re.search(r'Abu\s+Al[- ]Arousa', s, re.I)
+              and 'data-youtube="2KVyASYThgw"' in s
+              and 'https://i.ytimg.com/vi/2KVyASYThgw/hqdefault.jpg' in s
+              and 'hospital-57357-qewa-fi-alby.mp4' not in s
+              and 'hospital-57357-qewa-fi-alby.webp' not in s
+          )
+          raise SystemExit(0 if ok else 1)
+          PY
+            sleep 4
+          done
+          echo 'Final Selected Work verification failed.'
+          exit 1
