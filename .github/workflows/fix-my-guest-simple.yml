@@ -1,0 +1,50 @@
+name: Fix My Guest simple English titles
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: contains(github.event.issue.title, 'FIX-MY-GUEST-SIMPLE')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Simplify titles
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('.github/workflows/deploy-portfolio-fixed.yml')
+          text = p.read_text(encoding='utf-8')
+          old = '''          # My Guest with Moataz El Demerdash.\n          my_guest_ids = ["_5EHAht5a1M", "_Sd8QUoXoaI", "_7irVnrKMmM", "_vUQ8quTX-w", "FwVPJqsdXBc"]\n          my_guest_title = "My Guest with Moataz El Demerdash"\n'''
+          if old in text and 'my_guest_titles = [' not in text:
+              new = '''          # My Guest with Moataz El Demerdash.\n          my_guest_ids = ["_5EHAht5a1M", "_Sd8QUoXoaI", "_7irVnrKMmM", "_vUQ8quTX-w", "FwVPJqsdXBc"]\n          my_guest_titles = [\n              "Nader Abbassy — My Guest with Moataz El Demerdash",\n              "Magdy Abdelghany — My Guest with Moataz El Demerdash",\n              "Hany Ramzy — My Guest with Moataz El Demerdash",\n              "Salah Abdallah — My Guest with Moataz El Demerdash",\n              "Amr Mostafa — My Guest with Moataz El Demerdash",\n          ]\n          my_guest_title = "My Guest with Moataz El Demerdash"\n'''
+              text = text.replace(old, new, 1)
+              old_projects = '''              "projects": [\n                  yt_project(video_id, f"{my_guest_title} — Video {i:02d}", f"{my_guest_title} · TV Program Edit", f"MG{i:02d}")\n                  for i, video_id in enumerate(my_guest_ids, 1)\n              ],'''
+              new_projects = '''              "projects": [\n                  {\n                      "title": title,\n                      "subtitle": f"{my_guest_title} · TV Program Edit",\n                      "index": f"MG{i:02d}",\n                      "image": f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg",\n                      "imageFallback": "assets/on-e.webp",\n                      "youtube": video_id,\n                      "badge": "Watch Video",\n                  }\n                  for i, (video_id, title) in enumerate(zip(my_guest_ids, my_guest_titles), 1)\n              ],'''
+              text = text.replace(old_projects, new_projects, 1)
+
+          # Also simplify if the detailed-title version is already present.
+          replacements = {
+              'Nader Abbassy | My Guest with Moataz El Demerdash': 'Nader Abbassy — My Guest with Moataz El Demerdash',
+              'Magdy Abdelghany Reveals the Secrets of His Career — From the Pitch to Analysis': 'Magdy Abdelghany — My Guest with Moataz El Demerdash',
+              'Hany Ramzy Shares the Toughest Experience of His Life with Moataz El Demerdash': 'Hany Ramzy — My Guest with Moataz El Demerdash',
+              'Salah Abdallah Reveals the Story of His Early Career with Moataz El Demerdash': 'Salah Abdallah — My Guest with Moataz El Demerdash',
+              'Amr Mostafa | My Guest with Moataz El Demerdash': 'Amr Mostafa — My Guest with Moataz El Demerdash',
+          }
+          for a,b in replacements.items():
+              text = text.replace(a,b)
+          p.write_text(text, encoding='utf-8')
+          PY
+          git config user.name 'sayedabdallah-portfolio'
+          git config user.email 'sayedabdallahai@gmail.com'
+          git add .github/workflows/deploy-portfolio-fixed.yml
+          git commit -m 'Simplify My Guest video titles'
+          git push origin HEAD:main
