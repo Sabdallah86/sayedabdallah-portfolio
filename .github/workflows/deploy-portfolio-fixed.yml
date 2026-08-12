@@ -24,6 +24,7 @@ jobs:
             "https://sayedabdallah.pages.dev/script.js" \
             --output script.js
           python tools/build_hybrid.py
+          python tools/apply_client_logos.py
           node --check script.js
 
       - name: Retrieve all local media used by the portfolio
@@ -48,6 +49,9 @@ jobs:
           for ref in sorted(refs):
               target = Path(ref)
               target.parent.mkdir(parents=True, exist_ok=True)
+              if target.exists() and target.stat().st_size:
+                  print("Keeping generated/repository asset", ref)
+                  continue
               url = urllib.parse.urljoin(base, ref)
               req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
               try:
@@ -74,12 +78,19 @@ jobs:
           grep -q 'Stories edited.' index.html
           grep -q 'My Guest' index.html
           grep -q 'data-youtube="2KVyASYThgw"' index.html
-          grep -q 'class="client-marquee client-marquee-left' index.html
-          grep -q 'class="client-marquee client-marquee-right' index.html
+          grep -q 'clients-logo-section' index.html
+          grep -q 'client-brand-has-logo' index.html
+          grep -q 'assets/client-logos/satuc.png' index.html
+          grep -q 'assets/client-logos/toto-link.png' index.html
+          grep -q 'assets/client-logos/on.png' index.html
           grep -q 'Al-Ahram Agency' index.html
           grep -q 'Shasha Platform' index.html
           grep -q '37' index.html
           grep -q 'assets/sayed-abdallah.webp' index.html
+          grep -q 'CLIENT LOGO STRIP V2 START' styles.css
+          test -s assets/client-logos/satuc.png
+          test -s assets/client-logos/hospital-57357.png
+          test -s assets/client-logos/souad-kafafi.png
           ! grep -q 'class="grain"' index.html
           ! grep -q 'Abu Al-Arousa' index.html
           grep -q 'Nader Abbassy — My Guest with Moataz El Demerdash' script.js
@@ -117,13 +128,16 @@ jobs:
           for attempt in 1 2 3 4 5 6 7; do
             curl --fail --location --silent --show-error "${final}/index.html" -o /tmp/final-index.html || true
             curl --fail --location --silent --show-error "${final}/script.js" -o /tmp/final-script.js || true
+            curl --fail --location --silent --show-error "${final}/styles.css" -o /tmp/final-styles.css || true
             if grep -q 'class="portfolio-sidebar"' /tmp/final-index.html 2>/dev/null \
               && grep -q 'My Guest' /tmp/final-index.html 2>/dev/null \
               && grep -q 'data-youtube="2KVyASYThgw"' /tmp/final-index.html 2>/dev/null \
-              && grep -q 'Al-Ahram Agency' /tmp/final-index.html 2>/dev/null \
+              && grep -q 'clients-logo-section' /tmp/final-index.html 2>/dev/null \
+              && grep -q 'assets/client-logos/satuc.png' /tmp/final-index.html 2>/dev/null \
               && grep -q 'Shasha Platform' /tmp/final-index.html 2>/dev/null \
+              && grep -q 'CLIENT LOGO STRIP V2 START' /tmp/final-styles.css 2>/dev/null \
               && grep -q 'Nader Abbassy — My Guest with Moataz El Demerdash' /tmp/final-script.js 2>/dev/null; then
-                echo "Hybrid black-gold portfolio verified successfully."
+                echo "Hybrid black-gold portfolio with exact client logos verified successfully."
                 exit 0
             fi
             sleep 4
