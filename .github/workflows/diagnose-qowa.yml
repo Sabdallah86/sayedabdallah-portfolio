@@ -1,0 +1,29 @@
+name: Diagnose Qowa Fi Alby YouTube source
+
+on:
+  push:
+    branches:
+      - language-preview
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check current ID and search YouTube
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet yt-dlp
+          echo '=== CURRENT ID OEMBED ==='
+          curl -sS -D - 'https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=2KVyASYThgw&format=json' -o /tmp/oembed-current || true
+          cat /tmp/oembed-current || true
+          echo
+          echo '=== CURRENT THUMB ==='
+          curl -sS -I 'https://i.ytimg.com/vi/2KVyASYThgw/hqdefault.jpg' || true
+          echo
+          echo '=== SEARCH RESULTS ==='
+          yt-dlp --flat-playlist --skip-download --print '%(id)s | %(title)s | %(url)s' 'ytsearch15:فرقة صوت الشارع قوة في قلبي 57357' || true
+          echo
+          echo '=== SEARCH RESULTS ENGLISH ==='
+          yt-dlp --flat-playlist --skip-download --print '%(id)s | %(title)s | %(url)s' 'ytsearch15:Qowa Fi Alby Hospital 57357 Sout El Share3' || true
