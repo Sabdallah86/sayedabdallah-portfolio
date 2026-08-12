@@ -282,6 +282,31 @@ jobs:
               "projects": [yt_project(bedaya_id, "Program Bedaya — Video 01", "Program Bedaya · TV Program Edit", "BD01")],
           }
 
+          # My Guest with Moataz El Demerdash.
+          my_guest_ids = ["_5EHAht5a1M", "_Sd8QUoXoaI", "_7irVnrKMmM", "_vUQ8quTX-w", "FwVPJqsdXBc"]
+          my_guest_title = "My Guest with Moataz El Demerdash"
+          my_guest_slug = "my-guest-moataz-el-demerdash"
+          tv["projects"] = [p for p in tv["projects"] if p.get("collection") != my_guest_slug]
+          tv["projects"].append({
+              "title": my_guest_title,
+              "subtitle": "TV Program · Video Collection",
+              "index": "TV09",
+              "image": f"https://i.ytimg.com/vi/{my_guest_ids[0]}/hqdefault.jpg",
+              "imageFallback": "assets/on-e.webp",
+              "collection": my_guest_slug,
+              "badge": "Open Collection",
+          })
+          tv["collections"][my_guest_slug] = {
+              "title": my_guest_title,
+              "kicker": "TV Program",
+              "description": f"Selected episodes and edits from {my_guest_title}.",
+              "cover": f"https://i.ytimg.com/vi/{my_guest_ids[0]}/hqdefault.jpg",
+              "projects": [
+                  yt_project(video_id, f"{my_guest_title} — Video {i:02d}", f"{my_guest_title} · TV Program Edit", f"MG{i:02d}")
+                  for i, video_id in enumerate(my_guest_ids, 1)
+              ],
+          }
+
           # Al Ahly collection with FIBA African Basketball Championship promo.
           fiba_id = "N4uGPUETGb4"
           sports = data["sports-events"]
@@ -415,6 +440,12 @@ jobs:
           grep -q 'data-youtube="2KVyASYThgw"' index.html
           grep -q '"youtube": "hyYa8IUSJJc"' script.js
           grep -q '"youtube": "2KVyASYThgw"' script.js
+          grep -q 'My Guest with Moataz El Demerdash' script.js
+          grep -q '"youtube": "_5EHAht5a1M"' script.js
+          grep -q '"youtube": "_Sd8QUoXoaI"' script.js
+          grep -q '"youtube": "_7irVnrKMmM"' script.js
+          grep -q '"youtube": "_vUQ8quTX-w"' script.js
+          grep -q '"youtube": "FwVPJqsdXBc"' script.js
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
@@ -435,11 +466,13 @@ jobs:
             if grep -q 'data-youtube="hyYa8IUSJJc"' /tmp/final-index.html 2>/dev/null \
               && grep -q 'data-youtube="2KVyASYThgw"' /tmp/final-index.html 2>/dev/null \
               && grep -q '"youtube": "hyYa8IUSJJc"' /tmp/final-script.js 2>/dev/null \
-              && grep -q '"youtube": "2KVyASYThgw"' /tmp/final-script.js 2>/dev/null; then
+              && grep -q '"youtube": "2KVyASYThgw"' /tmp/final-script.js 2>/dev/null \
+              && grep -q 'My Guest with Moataz El Demerdash' /tmp/final-script.js 2>/dev/null \
+              && grep -q '"youtube": "FwVPJqsdXBc"' /tmp/final-script.js 2>/dev/null; then
               echo "Final production verified successfully."
               exit 0
             fi
             sleep 4
           done
-          echo "Final production alias did not show both fixes in time."
+          echo "Final production alias did not show all required updates in time."
           exit 1
