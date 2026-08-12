@@ -16,7 +16,6 @@ CLIENTS = [
     'Turkish Factory', 'AlWathaeqya Channel', 'Kuwait Television', 'Shasha Platform'
 ]
 
-# Logos supplied and confirmed by the user in this conversation.
 NAME_TO_LOGO = {
     'Al-Ahram Agency': 'al-ahram',
     'Al-Jala Military Hospital': 'galaa-medical',
@@ -44,8 +43,10 @@ NAME_TO_LOGO = {
     'Shasha Platform': 'shasha',
 }
 
-# Decode the newest uploaded logos from a data-only JSON file. The earlier confirmed
-# logos are already written by apply_client_logos.py immediately before this script.
+# These three were previously tiny placeholder PNGs. They now point to vectors
+# rebuilt directly from the logo images supplied by the user.
+SUPPLIED_SVG = {'satuc', 'toto-link', 'hospital-57357'}
+
 data_path = Path('assets/client-logos-src/logos.json')
 new_logos = json.loads(data_path.read_text(encoding='utf-8'))
 expected = {
@@ -64,11 +65,17 @@ for slug in sorted(expected):
         raise RuntimeError(f'{slug} is not a valid PNG payload')
     (logo_dir / f'{slug}.png').write_bytes(raw)
 
-# Ensure every mapped logo file exists before we reference it.
 for name, slug in NAME_TO_LOGO.items():
-    path = logo_dir / f'{slug}.png'
-    if not path.exists() or path.stat().st_size < 100:
-        raise RuntimeError(f'Logo file missing or empty for {name}: {path}')
+    if slug in SUPPLIED_SVG:
+        path = Path('assets/client-logos-svg') / f'{slug}.svg'
+        if not path.exists() or path.stat().st_size < 500:
+            raise RuntimeError(f'Supplied SVG missing or too small for {name}: {path}')
+        if '<svg' not in path.read_text(encoding='utf-8'):
+            raise RuntimeError(f'Invalid SVG for {name}: {path}')
+    else:
+        path = logo_dir / f'{slug}.png'
+        if not path.exists() or path.stat().st_size < 100:
+            raise RuntimeError(f'Logo file missing or empty for {name}: {path}')
 
 
 def initials(name):
@@ -82,9 +89,13 @@ def brand(name):
     safe_name = escape(name)
     slug = NAME_TO_LOGO.get(name)
     if slug:
+        if slug in SUPPLIED_SVG:
+            src = f'assets/client-logos-svg/{slug}.svg'
+        else:
+            src = f'assets/client-logos/{slug}.png'
         return (
             f'<div class="client-brand-v3 client-brand-v3-logo">'
-            f'<img src="assets/client-logos/{slug}.png" alt="{safe_name} logo" loading="lazy">'
+            f'<img src="{src}" alt="{safe_name} logo" loading="lazy">'
             f'<span>{safe_name}</span></div>'
         )
     return (
@@ -145,6 +156,7 @@ css += r'''
 .clients-v3-row:hover .clients-v3-track{animation-play-state:paused}
 .client-brand-v3{display:flex;align-items:center;gap:13px;min-width:max-content;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
 .client-brand-v3 img{display:block;width:auto;height:auto;max-width:148px;max-height:70px;object-fit:contain;filter:brightness(0) invert(1)!important;opacity:.94}
+.client-brand-v3 img[src$=".svg"]{filter:none!important}
 .client-brand-v3 span{font-family:Inter,Arial,sans-serif;color:#d5d5d2;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;max-width:175px;line-height:1.3}
 .client-brand-v3-wordmark b{display:grid;place-items:center;min-width:52px;height:52px;color:#f0f0ed;border:1px solid rgba(255,255,255,.22);font-family:'Bebas Neue',sans-serif;font-size:25px;letter-spacing:.04em}
 @keyframes clientsV3Left{from{transform:translateX(0)}to{transform:translateX(-50%)}}
