@@ -25,6 +25,7 @@ jobs:
             --output script.js
           python tools/build_hybrid.py
           python tools/apply_client_logos.py
+          python tools/merge_client_logo_data.py
           python tools/apply_client_logos_v3.py
           node --check script.js
 
