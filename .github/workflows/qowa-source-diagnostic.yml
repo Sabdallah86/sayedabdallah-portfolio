@@ -12,11 +12,18 @@ jobs:
     if: contains(github.event.issue.title, 'QOWA-DIAGNOSTIC')
     runs-on: ubuntu-latest
     steps:
-      - name: Check current YouTube ID and search for Qowa Fi Alby
+      - name: Inspect live Selected Work Qowa card
         shell: bash
         run: |
           set +e
-          python -m pip install --quiet yt-dlp
+          echo '=== LIVE INDEX QOWA REFERENCES ==='
+          curl -sS -L 'https://sayedabdallah.pages.dev/index.html' -o /tmp/index.html
+          grep -n -B 8 -A 16 -E 'Qowa Fi Alby|Hospital 57357|2KVyASYThgw|hospital-57357-qewa-fi-alby' /tmp/index.html || true
+          echo
+          echo '=== LIVE SCRIPT QOWA REFERENCES ==='
+          curl -sS -L 'https://sayedabdallah.pages.dev/script.js' -o /tmp/script.js
+          grep -n -B 5 -A 12 -E 'Qowa Fi Alby|2KVyASYThgw|hospital-57357-qewa-fi-alby' /tmp/script.js || true
+          echo
           echo '=== CURRENT OEMBED ==='
           curl -sS -D /tmp/current.headers 'https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=2KVyASYThgw&format=json' -o /tmp/current.body
           cat /tmp/current.headers
@@ -24,13 +31,4 @@ jobs:
           echo
           echo '=== CURRENT THUMB ==='
           curl -sS -I 'https://i.ytimg.com/vi/2KVyASYThgw/hqdefault.jpg'
-          echo
-          echo '=== ARABIC SEARCH ==='
-          yt-dlp --flat-playlist --skip-download --print '%(id)s | %(title)s | %(url)s' 'ytsearch20:فرقة صوت الشارع قوة في قلبي 57357'
-          echo
-          echo '=== ALT ARABIC SEARCH ==='
-          yt-dlp --flat-playlist --skip-download --print '%(id)s | %(title)s | %(url)s' 'ytsearch20:قوة في قلبي صوت الشارع بدر مصطفى سارة سليم سحاب'
-          echo
-          echo '=== ENGLISH SEARCH ==='
-          yt-dlp --flat-playlist --skip-download --print '%(id)s | %(title)s | %(url)s' 'ytsearch20:Qowa Fi Alby Sout El Share3 Hospital 57357'
           exit 0
