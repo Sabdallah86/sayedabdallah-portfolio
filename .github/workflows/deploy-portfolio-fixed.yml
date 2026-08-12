@@ -63,17 +63,6 @@ jobs:
           print(f"Retrieved {len(refs)} portfolio assets.")
           PY
 
-      - name: Optimize local MP4 media
-        shell: bash
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-          for file in assets/*.mp4; do
-            temp="${file%.mp4}.faststart.mp4"
-            ffmpeg -hide_banner -loglevel error -y -i "$file" -c copy -movflags +faststart "$temp"
-            mv "$temp" "$file"
-          done
-
       - name: Validate redesign
         shell: bash
         run: |
