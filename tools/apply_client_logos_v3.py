@@ -43,8 +43,7 @@ NAME_TO_LOGO = {
     'Shasha Platform': 'shasha',
 }
 
-# These three were previously tiny placeholder PNGs. They now point to vectors
-# rebuilt directly from the logo images supplied by the user.
+# These three use the clean vector versions created from the user supplied logos.
 SUPPLIED_SVG = {'satuc', 'toto-link', 'hospital-57357'}
 
 data_path = Path('assets/client-logos-src/logos.json')
@@ -87,20 +86,26 @@ def initials(name):
 
 def brand(name):
     safe_name = escape(name)
+    safe_initials = escape(initials(name))
     slug = NAME_TO_LOGO.get(name)
     if slug:
-        if slug in SUPPLIED_SVG:
-            src = f'assets/client-logos-svg/{slug}.svg'
-        else:
-            src = f'assets/client-logos/{slug}.png'
+        src = (f'assets/client-logos-svg/{slug}.svg' if slug in SUPPLIED_SVG
+               else f'assets/client-logos/{slug}.png')
+        # Empty alt prevents browsers from dumping a long alt string into the layout.
+        # If an asset cannot render, the image hides and a clean text mark remains.
         return (
             f'<div class="client-brand-v3 client-brand-v3-logo">'
-            f'<img src="{src}" alt="{safe_name} logo" loading="lazy">'
-            f'<span>{safe_name}</span></div>'
+            f'<span class="client-logo-v3-mark">'
+            f'<img src="{src}" alt="" loading="lazy" decoding="async" '
+            f'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'
+            f'<i class="client-logo-v3-fallback" aria-hidden="true">{safe_initials}</i>'
+            f'</span>'
+            f'<span class="client-name-v3">{safe_name}</span></div>'
         )
     return (
         f'<div class="client-brand-v3 client-brand-v3-wordmark">'
-        f'<b aria-hidden="true">{escape(initials(name))}</b><span>{safe_name}</span></div>'
+        f'<span class="client-logo-v3-mark"><i class="client-logo-v3-fallback visible" aria-hidden="true">{safe_initials}</i></span>'
+        f'<span class="client-name-v3">{safe_name}</span></div>'
     )
 
 row1 = CLIENTS[::2]
@@ -146,22 +151,42 @@ css += r'''
 .clients-v3{overflow:hidden;padding-top:54px!important;padding-bottom:54px!important;background:#030303}
 .clients-v3-title{display:flex;align-items:center;gap:22px;margin-bottom:18px}
 .clients-v3-title .kicker{margin:0;white-space:nowrap}
-.clients-v3-title>span{height:1px;flex:1;background:rgba(211,164,47,.55)}
-.clients-v3-row{overflow:hidden;border-top:1px solid rgba(211,164,47,.55);position:relative}
-.clients-v3-row:last-child{border-bottom:1px solid rgba(211,164,47,.55)}
+.clients-v3-title>span{height:1px;flex:1;background:rgba(211,164,47,.62)}
+.clients-v3-row{overflow:hidden;border-top:1px solid rgba(211,164,47,.58);position:relative;width:100%}
+.clients-v3-row:last-child{border-bottom:1px solid rgba(211,164,47,.58)}
 .clients-v3-track{display:flex;width:max-content;will-change:transform}
-.clients-v3-group{display:flex;align-items:center;gap:58px;padding:28px 29px;flex-shrink:0}
-.clients-v3-left .clients-v3-track{animation:clientsV3Left 62s linear infinite}
-.clients-v3-right .clients-v3-track{animation:clientsV3Right 68s linear infinite}
+.clients-v3-group{display:flex;align-items:center;gap:38px;padding:27px 19px;flex:0 0 auto}
+.clients-v3-left .clients-v3-track{animation:clientsV3Left 78s linear infinite}
+.clients-v3-right .clients-v3-track{animation:clientsV3Right 82s linear infinite}
 .clients-v3-row:hover .clients-v3-track{animation-play-state:paused}
-.client-brand-v3{display:flex;align-items:center;gap:13px;min-width:max-content;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
-.client-brand-v3 img{display:block;width:auto;height:auto;max-width:148px;max-height:70px;object-fit:contain;filter:brightness(0) invert(1)!important;opacity:.94}
-.client-brand-v3 img[src$=".svg"]{filter:none!important}
-.client-brand-v3 span{font-family:Inter,Arial,sans-serif;color:#d5d5d2;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;max-width:175px;line-height:1.3}
-.client-brand-v3-wordmark b{display:grid;place-items:center;min-width:52px;height:52px;color:#f0f0ed;border:1px solid rgba(255,255,255,.22);font-family:'Bebas Neue',sans-serif;font-size:25px;letter-spacing:.04em}
-@keyframes clientsV3Left{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-@keyframes clientsV3Right{from{transform:translateX(-50%)}to{transform:translateX(0)}}
-@media(max-width:760px){.clients-v3{padding-top:38px!important;padding-bottom:38px!important}.clients-v3-group{gap:38px;padding:22px 18px}.client-brand-v3 img{max-width:112px;max-height:55px}.client-brand-v3 span{font-size:9px;max-width:130px}.clients-v3-left .clients-v3-track{animation-duration:48s}.clients-v3-right .clients-v3-track{animation-duration:52s}}
+.client-brand-v3{display:flex;align-items:center;gap:12px;width:235px;min-width:235px;max-width:235px;height:76px;flex:0 0 235px;overflow:hidden;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
+.client-logo-v3-mark{width:88px;min-width:88px;height:64px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:transparent!important;border:0!important}
+.client-brand-v3 img{display:block!important;width:auto!important;height:auto!important;max-width:86px!important;max-height:60px!important;object-fit:contain!important;object-position:center!important;filter:none!important;opacity:.96}
+.client-logo-v3-fallback{display:none;align-items:center;justify-content:center;width:100%;height:100%;font-family:'Bebas Neue',Inter,Arial,sans-serif;font-style:normal;font-size:27px;letter-spacing:.06em;color:#d3a42f;background:transparent;border:0}
+.client-logo-v3-fallback.visible{display:flex}
+.client-name-v3{display:block!important;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap!important;font-family:Inter,Arial,sans-serif;color:#d8d8d5;font-size:11px!important;font-weight:700;letter-spacing:.075em;text-transform:uppercase;line-height:1.2!important}
+@keyframes clientsV3Left{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}
+@keyframes clientsV3Right{from{transform:translate3d(-50%,0,0)}to{transform:translate3d(0,0,0)}}
+@media(max-width:760px){
+  .clients-v3{padding-top:38px!important;padding-bottom:38px!important}
+  .clients-v3-title{gap:14px;margin-bottom:12px}
+  .clients-v3-title .kicker{font-size:11px!important;letter-spacing:.16em}
+  .clients-v3-group{gap:22px;padding:20px 11px}
+  .client-brand-v3{width:188px;min-width:188px;max-width:188px;height:62px;flex-basis:188px;gap:9px}
+  .client-logo-v3-mark{width:70px;min-width:70px;height:52px}
+  .client-brand-v3 img{max-width:68px!important;max-height:48px!important}
+  .client-logo-v3-fallback{font-size:22px}
+  .client-name-v3{font-size:9.5px!important;letter-spacing:.055em}
+  .clients-v3-left .clients-v3-track{animation-duration:64s}
+  .clients-v3-right .clients-v3-track{animation-duration:68s}
+}
+@media(max-width:420px){
+  .clients-v3-group{gap:16px;padding-left:8px;padding-right:8px}
+  .client-brand-v3{width:174px;min-width:174px;max-width:174px;flex-basis:174px}
+  .client-logo-v3-mark{width:64px;min-width:64px}
+  .client-brand-v3 img{max-width:62px!important;max-height:46px!important}
+  .client-name-v3{font-size:9px!important}
+}
 @media(prefers-reduced-motion:reduce){.clients-v3-track{animation:none!important}.clients-v3-row{overflow-x:auto}}
 /* CLIENT LOGO V3 END */
 '''
