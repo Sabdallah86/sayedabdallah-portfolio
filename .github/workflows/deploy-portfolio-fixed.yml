@@ -1,9 +1,8 @@
-name: Deploy fixed portfolio to Cloudflare Pages
+name: Deploy portfolio
 
 on:
   push:
-    branches:
-      - main
+    branches: [main, black-gold-redesign]
   workflow_dispatch:
 
 permissions:
@@ -14,440 +13,83 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout portfolio source
         uses: actions/checkout@v4
 
-      - name: Retrieve current live portfolio
+      - name: Preserve current portfolio data
         shell: bash
         run: |
           set -euo pipefail
-          base="https://sayedabdallah.pages.dev"
+          curl --fail --location --retry 4 --retry-delay 2 \
+            "https://sayedabdallah.pages.dev/script.js" \
+            --output script.js
+          python tools/build_redesign.py
+          node --check script.js
 
-          curl --fail --location --retry 3 "${base}/index.html" --output index.html
-          curl --fail --location --retry 3 "${base}/script.js" --output script.js
-
-          mkdir -p assets
-          files=(
-            hero.webp
-            al-ahly.webp
-            ciff.webp
-            abu-el-arousa.webp
-            abu-el-arousa.mp4
-            on-e.webp
-            ramadan-2025.webp
-            hospital-57357.webp
-            showreel.webp
-            og-image.webp
-            sayed-abdallah.webp
-            toto-link-commercial.webp
-            toto-link-commercial.mp4
-            satuc-branded-promo.webp
-            satuc-branded-promo.mp4
-            teatro-series-promo.webp
-            teatro-series-promo.mp4
-          )
-          for file in "${files[@]}"; do
-            echo "Downloading ${file}"
-            curl --fail --location --retry 3 --retry-delay 2 "${base}/assets/${file}" --output "assets/${file}"
-          done
-
-      - name: Optimize local MP4 files for seeking
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! command -v ffmpeg >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y ffmpeg
-          fi
-
-          shopt -s nullglob
-          for file in assets/*.mp4; do
-            echo "Optimizing ${file}"
-            temp="${file%.mp4}.faststart.mp4"
-            ffmpeg -hide_banner -loglevel error -y -i "${file}" -c copy -movflags +faststart "${temp}"
-            mv "${temp}" "${file}"
-          done
-
-      - name: Apply portfolio updates
+      - name: Retrieve all local media used by the portfolio
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
-          import json
+          import re
           import urllib.parse
           import urllib.request
 
-          def fetch_json(url):
+          base = "https://sayedabdallah.pages.dev/"
+          sources = ["index.html", "styles.css", "category-pages.css", "script.js"]
+          refs = set()
+          pattern = re.compile(r"assets/[A-Za-z0-9_./-]+\.(?:webp|png|jpg|jpeg|svg|mp4|webm)", re.I)
+
+          for source in sources:
+              text = Path(source).read_text(encoding="utf-8", errors="ignore")
+              refs.update(pattern.findall(text))
+
+          for ref in sorted(refs):
+              target = Path(ref)
+              target.parent.mkdir(parents=True, exist_ok=True)
+              url = urllib.parse.urljoin(base, ref)
+              print("Downloading", ref)
               req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-              with urllib.request.urlopen(req, timeout=15) as response:
-                  return json.load(response)
+              with urllib.request.urlopen(req, timeout=90) as response:
+                  data = response.read()
+                  content_type = response.headers.get("content-type", "")
+              if not data:
+                  raise RuntimeError(f"Empty asset: {ref}")
+              if "text/html" in content_type.lower():
+                  raise RuntimeError(f"Asset resolved to HTML instead of media: {ref}")
+              target.write_bytes(data)
 
-          def yt_title(video_id, fallback):
-              try:
-                  watch = f"https://www.youtube.com/watch?v={video_id}"
-                  url = "https://www.youtube.com/oembed?" + urllib.parse.urlencode({"url": watch, "format": "json"})
-                  title = str(fetch_json(url).get("title", "")).strip()
-                  return title or fallback
-              except Exception:
-                  return fallback
-
-          def yt_project(video_id, fallback, subtitle, index, badge="Watch Video"):
-              return {
-                  "title": yt_title(video_id, fallback),
-                  "subtitle": subtitle,
-                  "index": index,
-                  "image": f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg",
-                  "imageFallback": "assets/on-e.webp",
-                  "youtube": video_id,
-                  "badge": badge,
-              }
-
-          def vimeo_meta(video_id, fallback):
-              try:
-                  url = "https://vimeo.com/api/oembed.json?" + urllib.parse.urlencode({"url": f"https://vimeo.com/{video_id}"})
-                  data = fetch_json(url)
-                  return {
-                      "title": str(data.get("title", "")).strip() or fallback,
-                      "thumbnail": str(data.get("thumbnail_url", "")).strip() or "assets/on-e.webp",
-                  }
-              except Exception:
-                  return {"title": fallback, "thumbnail": "assets/on-e.webp"}
-
-          def vimeo_project(video_id, fallback, subtitle, index):
-              meta = vimeo_meta(video_id, fallback)
-              return {
-                  "title": meta["title"],
-                  "subtitle": subtitle,
-                  "index": index,
-                  "image": meta["thumbnail"],
-                  "imageFallback": "assets/on-e.webp",
-                  "vimeo": video_id,
-                  "badge": "Watch Video",
-              }
-
-          script_path = Path("script.js")
-          text = script_path.read_text(encoding="utf-8")
-          marker = "const categoryData = "
-          start = text.index(marker) + len(marker)
-          function_start = text.index("function escapeHTML", start)
-          raw_json = text[start:function_start].rstrip()
-          if raw_json.endswith(";"):
-              raw_json = raw_json[:-1].rstrip()
-          data = json.loads(raw_json)
-
-          # Final YouTube IDs used across Selected Work and category pages.
-          haytan_id = "hyYa8IUSJJc"
-          qowa_id = "2KVyASYThgw"
-
-          # Abu Al-Arousa — Haytan Beitna
-          data["series"]["projects"][1] = {
-              "title": "Abu Al-Arousa — Haytan Beitna",
-              "subtitle": "Series Song · Video Editing",
-              "index": "S02",
-              "image": f"https://i.ytimg.com/vi/{haytan_id}/hqdefault.jpg",
-              "imageFallback": "assets/abu-el-arousa.webp",
-              "youtube": haytan_id,
-              "badge": "Watch Video",
-          }
-
-          # Hospital 57357 — Qowa Fi Alby: restore original YouTube version.
-          institutional_projects = data.get("institutional", {}).get("projects", [])
-          qowa_project = next((p for p in institutional_projects if p.get("index") == "SI01"), None)
-          if qowa_project is None and institutional_projects:
-              qowa_project = institutional_projects[0]
-          if qowa_project is None:
-              raise RuntimeError("Hospital 57357 SI01 project not found")
-          qowa_project.clear()
-          qowa_project.update({
-              "title": "Hospital 57357 — Qowa Fi Alby",
-              "subtitle": "Music Video · Video Editing",
-              "index": "SI01",
-              "image": f"https://i.ytimg.com/vi/{qowa_id}/hqdefault.jpg",
-              "imageFallback": "assets/hospital-57357.webp",
-              "youtube": qowa_id,
-              "badge": "Watch Music Video",
-          })
-          data["institutional"]["cover"] = f"https://i.ytimg.com/vi/{qowa_id}/hqdefault.jpg"
-
-          # Keep the second institutional music video fixed.
-          institutional_id = "SIndjl5ZIL0"
-          if len(data.get("institutional", {}).get("projects", [])) > 1:
-              data["institutional"]["projects"][1] = {
-                  "title": yt_title(institutional_id, "Institutional Music Video — 02"),
-                  "subtitle": "Music Video · Video Editing",
-                  "index": "SI02",
-                  "image": f"https://i.ytimg.com/vi/{institutional_id}/hqdefault.jpg",
-                  "imageFallback": "assets/hospital-57357.webp",
-                  "youtube": institutional_id,
-                  "badge": "Watch Music Video",
-              }
-
-          tv = data["tv-programs"]
-          tv.setdefault("collections", {})
-
-          # Kuwait labels.
-          quran_name = "Bel Quran Ehtadayt — Kuwait"
-          faseero_name = "Faseero — Kuwait"
-          for project in tv["projects"]:
-              if project.get("collection") == "bil-quran-ihtadayt":
-                  project["title"] = quran_name
-              elif project.get("collection") == "faseero":
-                  project["title"] = faseero_name
-          if "bil-quran-ihtadayt" in tv["collections"]:
-              collection = tv["collections"]["bil-quran-ihtadayt"]
-              collection["title"] = quran_name
-              collection["description"] = f"Selected episodes and edits from {quran_name}."
-              for project in collection.get("projects", []):
-                  project["subtitle"] = f"{quran_name} · TV Program Edit"
-          if "faseero" in tv["collections"]:
-              collection = tv["collections"]["faseero"]
-              collection["title"] = faseero_name
-              collection["description"] = f"Selected work from {faseero_name}."
-              for project in collection.get("projects", []):
-                  project["subtitle"] = f"{faseero_name} · TV Program Edit"
-
-          # ON E — preserve existing main card and replace collection with the requested complete set.
-          on_ids = [
-              "8SzWYjluCpw",
-              "K6EtzANGU5k",
-              "3UO9CNQP_mo",
-              "c7KL8K4AWGw",
-              "DmXmEbeisiA",
-              "V7OMgvsGFYQ",
-              "nbpsCCxjxkM",
-              "4D7S9MiCszM",
-          ]
-          on_projects = []
-          for i, video_id in enumerate(on_ids, 1):
-              on_projects.append(yt_project(video_id, f"ON E — Video {i:02d}", "ON E · TV Program Edit", f"ON{i:02d}"))
-          on_projects.append(vimeo_project("813971630", "ON E — Vimeo 01", "ON E · TV Program Edit", "ON09"))
-          on_projects.append(vimeo_project("813971433", "ON E — Vimeo 02", "ON E · TV Program Edit", "ON10"))
-          tv["collections"]["on-e"] = {
-              "title": "ON E Channel",
-              "kicker": "TV Program",
-              "description": "Selected ON E television editing work.",
-              "cover": f"https://i.ytimg.com/vi/{on_ids[0]}/hqdefault.jpg",
-              "projects": on_projects,
-          }
-          for project in tv["projects"]:
-              if project.get("collection") == "on-e" or project.get("title") == "ON E Channel":
-                  project.update({
-                      "title": "ON E Channel",
-                      "subtitle": "TV Programs · Video Collection",
-                      "image": f"https://i.ytimg.com/vi/{on_ids[0]}/hqdefault.jpg",
-                      "imageFallback": "assets/on-e.webp",
-                      "collection": "on-e",
-                      "badge": "Open Collection",
-                  })
-
-          # MAKHMAK — SHASHA Kuwait.
-          makhmak_id = "mkJ6DVwDMjQ"
-          makhmak_title = "Program MAKHMAK — Platform SHASHA Kuwait"
-          tv["projects"] = [p for p in tv["projects"] if p.get("collection") != "makhmak"]
-          tv["projects"].append({
-              "title": makhmak_title,
-              "subtitle": "TV Program · SHASHA Kuwait",
-              "index": "TV07",
-              "image": f"https://i.ytimg.com/vi/{makhmak_id}/hqdefault.jpg",
-              "imageFallback": "assets/on-e.webp",
-              "collection": "makhmak",
-              "badge": "Open Collection",
-          })
-          tv["collections"]["makhmak"] = {
-              "title": makhmak_title,
-              "kicker": "TV Program",
-              "description": "Selected work from MAKHMAK on SHASHA Kuwait.",
-              "cover": f"https://i.ytimg.com/vi/{makhmak_id}/hqdefault.jpg",
-              "projects": [yt_project(makhmak_id, "MAKHMAK — SHASHA Kuwait", "MAKHMAK · SHASHA Kuwait · Video Editing", "MK01")],
-          }
-
-          # Program Bedaya.
-          bedaya_id = "3e-CpvJaMIg"
-          tv["projects"] = [p for p in tv["projects"] if p.get("collection") != "bedaya"]
-          tv["projects"].append({
-              "title": "Program Bedaya",
-              "subtitle": "TV Program · Video Collection",
-              "index": "TV08",
-              "image": f"https://i.ytimg.com/vi/{bedaya_id}/hqdefault.jpg",
-              "imageFallback": "assets/on-e.webp",
-              "collection": "bedaya",
-              "badge": "Open Collection",
-          })
-          tv["collections"]["bedaya"] = {
-              "title": "Program Bedaya",
-              "kicker": "TV Program",
-              "description": "Selected work from Program Bedaya.",
-              "cover": f"https://i.ytimg.com/vi/{bedaya_id}/hqdefault.jpg",
-              "projects": [yt_project(bedaya_id, "Program Bedaya — Video 01", "Program Bedaya · TV Program Edit", "BD01")],
-          }
-
-          # My Guest with Moataz El Demerdash.
-          my_guest_ids = ["_5EHAht5a1M", "_Sd8QUoXoaI", "_7irVnrKMmM", "_vUQ8quTX-w", "FwVPJqsdXBc"]
-          my_guest_title = "My Guest with Moataz El Demerdash"
-          my_guest_slug = "my-guest-moataz-el-demerdash"
-          tv["projects"] = [p for p in tv["projects"] if p.get("collection") != my_guest_slug]
-          tv["projects"].append({
-              "title": my_guest_title,
-              "subtitle": "TV Program · Video Collection",
-              "index": "TV09",
-              "image": f"https://i.ytimg.com/vi/{my_guest_ids[0]}/hqdefault.jpg",
-              "imageFallback": "assets/on-e.webp",
-              "collection": my_guest_slug,
-              "badge": "Open Collection",
-          })
-          tv["collections"][my_guest_slug] = {
-              "title": my_guest_title,
-              "kicker": "TV Program",
-              "description": f"Selected episodes and edits from {my_guest_title}.",
-              "cover": f"https://i.ytimg.com/vi/{my_guest_ids[0]}/hqdefault.jpg",
-              "projects": [
-                  yt_project(video_id, f"{my_guest_title} — Video {i:02d}", f"{my_guest_title} · TV Program Edit", f"MG{i:02d}")
-                  for i, video_id in enumerate(my_guest_ids, 1)
-              ],
-          }
-
-          # Al Ahly collection with FIBA African Basketball Championship promo.
-          fiba_id = "N4uGPUETGb4"
-          sports = data["sports-events"]
-          sports.setdefault("collections", {})
-          for project in sports["projects"]:
-              if project.get("title") == "Al Ahly Club" or project.get("collection") == "al-ahly":
-                  project.update({
-                      "title": "Al Ahly Club",
-                      "subtitle": "Sports Content · Video Collection",
-                      "index": "SE01",
-                      "image": "assets/al-ahly.webp",
-                      "collection": "al-ahly",
-                      "badge": "Open Collection",
-                  })
-                  project.pop("video", None)
-                  project.pop("youtube", None)
-          sports["collections"]["al-ahly"] = {
-              "title": "Al Ahly Club",
-              "kicker": "Sports",
-              "description": "Selected sports promos and content created for Al Ahly Club.",
-              "cover": "assets/al-ahly.webp",
-              "projects": [{
-                  "title": "Promo | FIBA African Basketball Championship",
-                  "subtitle": "Al Ahly Club · Sports Promo · Video Editing",
-                  "index": "AH01",
-                  "image": f"https://i.ytimg.com/vi/{fiba_id}/hqdefault.jpg",
-                  "imageFallback": "assets/al-ahly.webp",
-                  "youtube": fiba_id,
-                  "badge": "Watch Promo",
-              }],
-          }
-
-          # Good News as a standalone category.
-          good_news_id = "LLD5p0yP0fI"
-          data["good-news"] = {
-              "title": "Good News",
-              "kicker": "Production & Entertainment",
-              "description": "Selected editing work created for Good News.",
-              "cover": f"https://i.ytimg.com/vi/{good_news_id}/hqdefault.jpg",
-              "projects": [yt_project(good_news_id, "Good News — Video 01", "Good News · Video Editing", "GN01")],
-          }
-
-          updated = json.dumps(data, ensure_ascii=False, indent=2)
-          text = text[:start] + updated + ";\n\n" + text[function_start:]
-
-          # Extend project cards to support Vimeo.
-          text = text.replace(
-              "const hasPlayable = Boolean(project.video || project.youtube);",
-              "const hasPlayable = Boolean(project.video || project.youtube || project.vimeo);"
-          )
-          old_youtube_attrs = "  } else if (project.youtube) {\n    attrs = ` data-youtube=\"${escapeHTML(project.youtube)}\" data-title=\"${escapeHTML(project.title)}\" role=\"button\" tabindex=\"0\" aria-label=\"Play ${escapeHTML(project.title)}\"`;\n  }"
-          new_youtube_attrs = "  } else if (project.youtube) {\n    attrs = ` data-youtube=\"${escapeHTML(project.youtube)}\" data-title=\"${escapeHTML(project.title)}\" role=\"button\" tabindex=\"0\" aria-label=\"Play ${escapeHTML(project.title)}\"`;\n  } else if (project.vimeo) {\n    attrs = ` data-vimeo=\"${escapeHTML(project.vimeo)}\" data-title=\"${escapeHTML(project.title)}\" role=\"button\" tabindex=\"0\" aria-label=\"Play ${escapeHTML(project.title)}\"`;\n  }"
-          if old_youtube_attrs in text:
-              text = text.replace(old_youtube_attrs, new_youtube_attrs, 1)
-
-          # Local player controls: seek enabled, download UI hidden where supported.
-          player_marker = "const videoPlayer = document.getElementById('project-video-player');"
-          player_setup = "const videoPlayer = document.getElementById('project-video-player');\nif (videoPlayer) {\n  videoPlayer.controls = true;\n  videoPlayer.preload = 'auto';\n  videoPlayer.setAttribute('controlsList', 'nodownload noremoteplayback');\n  videoPlayer.disablePictureInPicture = true;\n  videoPlayer.addEventListener('contextmenu', event => event.preventDefault());\n}"
-          if player_marker in text and "controlsList', 'nodownload noremoteplayback'" not in text:
-              text = text.replace(player_marker, player_setup, 1)
-
-          # Allow Vimeo through the same external iframe used for YouTube.
-          text = text.replace(
-              "if (!videoModal || !videoTitle || (!card.dataset.video && !card.dataset.youtube)) return;",
-              "if (!videoModal || !videoTitle || (!card.dataset.video && !card.dataset.youtube && !card.dataset.vimeo)) return;"
-          )
-          old_open_branch = "  if (card.dataset.youtube && youtubePlayer) {\n    const videoId = encodeURIComponent(card.dataset.youtube);\n    youtubePlayer.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&playsinline=1`;\n    youtubePlayer.hidden = false;\n    videoModal.classList.add('youtube-video');\n  } else if (card.dataset.video && videoPlayer) {"
-          new_open_branch = "  if (card.dataset.youtube && youtubePlayer) {\n    const videoId = encodeURIComponent(card.dataset.youtube);\n    youtubePlayer.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&playsinline=1`;\n    youtubePlayer.hidden = false;\n    videoModal.classList.add('youtube-video');\n  } else if (card.dataset.vimeo && youtubePlayer) {\n    const videoId = encodeURIComponent(card.dataset.vimeo);\n    youtubePlayer.src = `https://player.vimeo.com/video/${videoId}?autoplay=1&title=0&byline=0&portrait=0`;\n    youtubePlayer.hidden = false;\n    videoModal.classList.add('youtube-video');\n  } else if (card.dataset.video && videoPlayer) {"
-          if old_open_branch in text:
-              text = text.replace(old_open_branch, new_open_branch, 1)
-
-          text = text.replace(
-              "if (card.matches('a') && !card.dataset.video && !card.dataset.youtube) return;",
-              "if (card.matches('a') && !card.dataset.video && !card.dataset.youtube && !card.dataset.vimeo) return;"
-          )
-          text = text.replace(
-              "if (card.dataset.video || card.dataset.youtube) {",
-              "if (card.dataset.video || card.dataset.youtube || card.dataset.vimeo) {"
-          )
-
-          old_local = "  } else if (card.dataset.video && videoPlayer) {\n    videoPlayer.src = card.dataset.video;\n    videoPlayer.poster = card.dataset.poster || '';\n    videoPlayer.hidden = false;\n  }"
-          new_local = "  } else if (card.dataset.video && videoPlayer) {\n    videoPlayer.src = card.dataset.video;\n    videoPlayer.poster = card.dataset.poster || '';\n    videoPlayer.preload = 'auto';\n    videoPlayer.hidden = false;\n    videoPlayer.load();\n  }"
-          if old_local in text:
-              text = text.replace(old_local, new_local, 1)
-
-          script_path.write_text(text, encoding="utf-8")
-
-          # Homepage: final Selected Work YouTube fixes + existing homepage updates.
-          index_path = Path("index.html")
-          html = index_path.read_text(encoding="utf-8")
-
-          # Abu Al-Arousa Selected Work -> Haytan Beitna YouTube.
-          html = html.replace('data-video="assets/abu-el-arousa.mp4"', f'data-youtube="{haytan_id}"')
-          html = html.replace('data-poster="assets/abu-el-arousa.webp"\n          ', '')
-          html = html.replace('data-title="Abu Al-Arousa — Season 2"', 'data-title="Abu Al-Arousa — Haytan Beitna"')
-          html = html.replace('aria-label="Play Abu Al-Arousa Season 2 video"', 'aria-label="Play Abu Al-Arousa Haytan Beitna video"')
-          html = html.replace('src="assets/abu-el-arousa.webp" alt="Abu Al-Arousa Season 2 editing project"', f'src="https://i.ytimg.com/vi/{haytan_id}/hqdefault.jpg" alt="Abu Al-Arousa Haytan Beitna song edited by Sayed Abdallah"')
-          html = html.replace('<h3>Abu Al-Arousa — Season 2</h3><p>TV Series · Video Editing</p>', '<h3>Abu Al-Arousa — Haytan Beitna</h3><p>Series Song · Video Editing</p>')
-
-          # Qowa Fi Alby Selected Work -> original YouTube video.
-          html = html.replace('data-video="assets/hospital-57357-qewa-fi-alby.mp4"', f'data-youtube="{qowa_id}"')
-          html = html.replace('data-poster="assets/hospital-57357-qewa-fi-alby.webp"\n          ', '')
-          html = html.replace('src="assets/hospital-57357-qewa-fi-alby.webp" alt="Hospital 57357 Qowa Fi Alby music video edited by Sayed Abdallah"', f'src="https://i.ytimg.com/vi/{qowa_id}/hqdefault.jpg" alt="Hospital 57357 Qowa Fi Alby music video edited by Sayed Abdallah"')
-
-          if f'data-youtube="{haytan_id}"' not in html:
-              raise RuntimeError("Abu Al-Arousa YouTube link missing from Selected Work")
-          if f'data-youtube="{qowa_id}"' not in html:
-              raise RuntimeError("Qowa Fi Alby YouTube link missing from Selected Work")
-
-          if 'href="index.html?category=good-news"' not in html:
-              category_anchor = '<a class="category-card reveal category-link" href="index.html?category=motion-graphics"><span class="category-icon">◇</span><h3>Motion Graphics<br>&amp; 3D</h3><p>Titles, graphics and visual systems.</p><span class="category-action">View Projects →</span></a>'
-              good_news_card = category_anchor + '\n        <a class="category-card reveal category-link" href="index.html?category=good-news"><span class="category-icon">★</span><h3>Good News</h3><p>Selected production and entertainment edits.</p><span class="category-action">View Projects →</span></a>'
-              if category_anchor in html:
-                  html = html.replace(category_anchor, good_news_card, 1)
-              else:
-                  html = html.replace('</div>\n    </section>\n\n    <section class="section showreel-section"', '<a class="category-card reveal category-link" href="index.html?category=good-news"><span class="category-icon">★</span><h3>Good News</h3><p>Selected production and entertainment edits.</p><span class="category-action">View Projects →</span></a>\n      </div>\n    </section>\n\n    <section class="section showreel-section"', 1)
-
-          if '<span>GOOD NEWS</span>' not in html:
-              html = html.replace('<span>MISR AL KHAIR</span>', '<span>MISR AL KHAIR</span>\n        <span>GOOD NEWS</span>', 1)
-
-          old_tag = '<video id="project-video-player" controls playsinline preload="metadata"></video>'
-          new_tag = '<video id="project-video-player" controls playsinline preload="auto" controlslist="nodownload noremoteplayback" disablepictureinpicture oncontextmenu="return false;"></video>'
-          if old_tag in html:
-              html = html.replace(old_tag, new_tag, 1)
-
-          index_path.write_text(html, encoding="utf-8")
+          print(f"Retrieved {len(refs)} portfolio assets.")
           PY
 
-          node --check script.js
-          grep -q 'data-youtube="hyYa8IUSJJc"' index.html
-          grep -q 'data-youtube="2KVyASYThgw"' index.html
-          grep -q '"youtube": "hyYa8IUSJJc"' script.js
-          grep -q '"youtube": "2KVyASYThgw"' script.js
-          grep -q 'My Guest with Moataz El Demerdash' script.js
-          grep -q '"youtube": "_5EHAht5a1M"' script.js
-          grep -q '"youtube": "_Sd8QUoXoaI"' script.js
-          grep -q '"youtube": "_7irVnrKMmM"' script.js
-          grep -q '"youtube": "_vUQ8quTX-w"' script.js
-          grep -q '"youtube": "FwVPJqsdXBc"' script.js
+      - name: Optimize local MP4 media
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for file in assets/*.mp4; do
+            temp="${file%.mp4}.faststart.mp4"
+            ffmpeg -hide_banner -loglevel error -y -i "$file" -c copy -movflags +faststart "$temp"
+            mv "$temp" "$file"
+          done
 
-      - name: Deploy to Cloudflare Pages
+      - name: Validate redesign
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'class="selected-showcase"' index.html
+          grep -q 'My Guest with Moataz El Demerdash' index.html
+          grep -q 'data-youtube="2KVyASYThgw"' index.html
+          ! grep -q 'Abu Al-Arousa' index.html
+          grep -q 'Nader Abbassy — My Guest with Moataz El Demerdash' script.js
+          grep -q 'Amr Mostafa — My Guest with Moataz El Demerdash' script.js
+          grep -q '"youtube": "2KVyASYThgw"' script.js
+          grep -q '"youtube": "hyYa8IUSJJc"' script.js
+          node --check script.js
+
+      - name: Deploy production to Cloudflare Pages
+        if: github.ref_name == 'main'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -455,24 +97,39 @@ jobs:
           command: pages deploy . --project-name=sayedabdallah
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Verify final production site
+      - name: Deploy redesign preview to Cloudflare Pages
+        if: github.ref_name != 'main'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy . --project-name=sayedabdallah --branch=${{ github.ref_name }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify deployed site
         shell: bash
         run: |
           set -euo pipefail
-          final="https://sayedabdallah.pages.dev"
-          for attempt in 1 2 3 4 5 6; do
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            final="https://sayedabdallah.pages.dev"
+          else
+            final="https://${GITHUB_REF_NAME}.sayedabdallah.pages.dev"
+          fi
+          for attempt in 1 2 3 4 5 6 7; do
             curl --fail --location --silent --show-error "${final}/index.html" -o /tmp/final-index.html || true
             curl --fail --location --silent --show-error "${final}/script.js" -o /tmp/final-script.js || true
-            if grep -q 'data-youtube="hyYa8IUSJJc"' /tmp/final-index.html 2>/dev/null \
+            curl --fail --location --silent --show-error "${final}/styles.css" -o /tmp/final-styles.css || true
+
+            if grep -q 'class="selected-showcase"' /tmp/final-index.html 2>/dev/null \
+              && grep -q 'My Guest with Moataz El Demerdash' /tmp/final-index.html 2>/dev/null \
               && grep -q 'data-youtube="2KVyASYThgw"' /tmp/final-index.html 2>/dev/null \
-              && grep -q '"youtube": "hyYa8IUSJJc"' /tmp/final-script.js 2>/dev/null \
-              && grep -q '"youtube": "2KVyASYThgw"' /tmp/final-script.js 2>/dev/null \
-              && grep -q 'My Guest with Moataz El Demerdash' /tmp/final-script.js 2>/dev/null \
-              && grep -q '"youtube": "FwVPJqsdXBc"' /tmp/final-script.js 2>/dev/null; then
-              echo "Final production verified successfully."
-              exit 0
+              && ! grep -q 'Abu Al-Arousa' /tmp/final-index.html 2>/dev/null \
+              && grep -q 'Nader Abbassy — My Guest with Moataz El Demerdash' /tmp/final-script.js 2>/dev/null \
+              && grep -q -- '--sidebar:232px' /tmp/final-styles.css 2>/dev/null; then
+                echo "Black-gold redesign verified successfully."
+                exit 0
             fi
             sleep 4
           done
-          echo "Final production alias did not show all required updates in time."
+          echo "Deployment verification failed."
           exit 1
