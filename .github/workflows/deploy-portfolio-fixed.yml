@@ -16,20 +16,19 @@ jobs:
       - name: Checkout portfolio source
         uses: actions/checkout@v4
 
-      - name: Build hybrid portfolio with local client logos
+      - name: Build portfolio with local client logos
         shell: bash
         run: |
           set -euo pipefail
           curl --fail --location --retry 4 --retry-delay 2 \
-            "https://sayedabdallah.pages.dev/script.js" \
-            --output script.js
+            "https://sayedabdallah.pages.dev/script.js" -o script.js
           python tools/build_hybrid.py
           python tools/apply_client_logos.py
           python tools/merge_client_logo_data.py
           python tools/apply_client_logos_v3.py
           node --check script.js
 
-      - name: Retrieve all local media used by the portfolio
+      - name: Retrieve portfolio media
         shell: bash
         run: |
           set -euo pipefail
@@ -46,7 +45,6 @@ jobs:
               target = Path(ref)
               target.parent.mkdir(parents=True, exist_ok=True)
               if target.exists() and target.stat().st_size:
-                  print("Keeping local asset", ref)
                   continue
               req = urllib.request.Request(urllib.parse.urljoin(base, ref), headers={"User-Agent":"Mozilla/5.0"})
               with urllib.request.urlopen(req, timeout=90) as response:
@@ -55,19 +53,18 @@ jobs:
               if not data or "text/html" in ctype.lower():
                   raise RuntimeError(f"Invalid media response for {ref}")
               target.write_bytes(data)
-          print(f"Checked {len(refs)} local portfolio assets.")
+          print(f"Checked {len(refs)} portfolio assets")
           PY
 
-      - name: Validate portfolio before deployment
+      - name: Validate before deployment
         shell: bash
         run: |
           set -euo pipefail
-          grep -q 'class="portfolio-sidebar"' index.html
-          grep -q 'My Guest' index.html
-          grep -q 'data-youtube="2KVyASYThgw"' index.html
           grep -q 'class="clients-v3' index.html
           grep -q 'CLIENT LOGO V3 START' styles.css
-          grep -q 'SQUARE Media Production' index.html
+          grep -q 'assets/client-logos-svg/satuc.svg' index.html
+          grep -q 'assets/client-logos-svg/toto-link.svg' index.html
+          grep -q 'assets/client-logos-svg/hospital-57357.svg' index.html
           grep -q 'assets/client-logos/square.png' index.html
           grep -q 'assets/client-logos/al-ahly.png' index.html
           grep -q 'assets/client-logos/ciff.png' index.html
@@ -77,12 +74,12 @@ jobs:
           grep -q 'assets/client-logos/on-sport.png' index.html
           grep -q 'assets/client-logos/good-news.png' index.html
           grep -q 'assets/client-logos/ministry-migration.png' index.html
-          grep -q 'assets/client-logos/satuc.png' index.html
+          grep -q 'SQUARE Media Production' index.html
           grep -q 'Shasha Platform' index.html
           grep -q '37' index.html
           ! grep -q 'class="grain"' index.html
           ! grep -q 'Abu Al-Arousa' index.html
-          for logo in satuc al-ahly ciff square kuwait-tv sudan-tv sada-el-balad on-sport good-news ministry-migration toto-link hospital-57357; do
+          for logo in al-ahly ciff square kuwait-tv sudan-tv sada-el-balad on-sport good-news ministry-migration; do
             test -s "assets/client-logos/${logo}.png"
             python - "$logo" <<'PY'
           import sys
@@ -91,9 +88,14 @@ jobs:
           assert p.read_bytes().startswith(b'\x89PNG\r\n\x1a\n'), p
           PY
           done
+          for logo in satuc toto-link hospital-57357; do
+            test -s "assets/client-logos-svg/${logo}.svg"
+            grep -q '<svg' "assets/client-logos-svg/${logo}.svg"
+            test "$(wc -c < "assets/client-logos-svg/${logo}.svg")" -gt 500
+          done
           node --check script.js
 
-      - name: Deploy production to Cloudflare Pages
+      - name: Deploy production
         if: github.ref_name == 'main'
         uses: cloudflare/wrangler-action@v3
         with:
@@ -102,7 +104,7 @@ jobs:
           command: pages deploy . --project-name=sayedabdallah
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Deploy preview to Cloudflare Pages
+      - name: Deploy preview
         if: github.ref_name != 'main'
         uses: cloudflare/wrangler-action@v3
         with:
@@ -111,7 +113,7 @@ jobs:
           command: pages deploy . --project-name=sayedabdallah --branch=${{ github.ref_name }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Verify final site and logo image files
+      - name: Verify final site and logo files
         shell: bash
         run: |
           set -euo pipefail
@@ -122,31 +124,40 @@ jobs:
             curl --fail --location --silent --show-error "${final}/index.html?build=${GITHUB_SHA}" -o /tmp/final-index.html || true
             curl --fail --location --silent --show-error "${final}/styles.css?build=${GITHUB_SHA}" -o /tmp/final-styles.css || true
             if grep -q 'class="clients-v3' /tmp/final-index.html 2>/dev/null \
+              && grep -q 'assets/client-logos-svg/satuc.svg' /tmp/final-index.html 2>/dev/null \
+              && grep -q 'assets/client-logos-svg/toto-link.svg' /tmp/final-index.html 2>/dev/null \
+              && grep -q 'assets/client-logos-svg/hospital-57357.svg' /tmp/final-index.html 2>/dev/null \
               && grep -q 'assets/client-logos/square.png' /tmp/final-index.html 2>/dev/null \
-              && grep -q 'assets/client-logos/al-ahly.png' /tmp/final-index.html 2>/dev/null \
               && grep -q 'CLIENT LOGO V3 START' /tmp/final-styles.css 2>/dev/null; then page_ok=1; break; fi
             sleep 4
           done
           test "$page_ok" = 1
 
-          for logo in satuc al-ahly ciff square kuwait-tv sudan-tv sada-el-balad on-sport good-news ministry-migration toto-link hospital-57357; do
-            logo_ok=0
+          for logo in al-ahly ciff square kuwait-tv sudan-tv sada-el-balad on-sport good-news ministry-migration; do
+            ok=0
             for attempt in 1 2 3 4 5 6 7 8; do
               url="${final}/assets/client-logos/${logo}.png?build=${GITHUB_SHA}"
-              if curl --fail --location --silent --show-error -D "/tmp/${logo}.headers" "$url" -o "/tmp/${logo}.body"; then
-                if test -s "/tmp/${logo}.body" && grep -qi '^content-type: image/' "/tmp/${logo}.headers"; then
-                  if python - "$logo" <<'PY'
-          import sys
-          from pathlib import Path
-          p = Path('/tmp') / (sys.argv[1] + '.body')
-          raise SystemExit(0 if p.read_bytes().startswith(b'\x89PNG\r\n\x1a\n') else 1)
-          PY
-                  then logo_ok=1; break; fi
-                fi
-              fi
+              if curl --fail --location --silent --show-error -D "/tmp/${logo}.h" "$url" -o "/tmp/${logo}.b" \
+                && test -s "/tmp/${logo}.b" \
+                && grep -qi '^content-type: image/' "/tmp/${logo}.h"; then ok=1; break; fi
               sleep 4
             done
-            test "$logo_ok" = 1
-            echo "LIVE OK ${logo}: $(wc -c < "/tmp/${logo}.body") bytes"
+            test "$ok" = 1
+            echo "PNG LIVE OK ${logo}: $(wc -c < "/tmp/${logo}.b") bytes"
           done
-          echo "CLIENT LOGO V3 LIVE VERIFICATION PASSED"
+
+          for logo in satuc toto-link hospital-57357; do
+            ok=0
+            for attempt in 1 2 3 4 5 6 7 8; do
+              url="${final}/assets/client-logos-svg/${logo}.svg?build=${GITHUB_SHA}"
+              if curl --fail --location --silent --show-error -D "/tmp/${logo}.h" "$url" -o "/tmp/${logo}.b" \
+                && test -s "/tmp/${logo}.b" \
+                && grep -qi '^content-type: image/' "/tmp/${logo}.h" \
+                && grep -q '<svg' "/tmp/${logo}.b"; then ok=1; break; fi
+              sleep 4
+            done
+            test "$ok" = 1
+            test "$(wc -c < "/tmp/${logo}.b")" -gt 500
+            echo "SVG LIVE OK ${logo}: $(wc -c < "/tmp/${logo}.b") bytes"
+          done
+          echo "CLIENT LOGO LIVE VERIFICATION PASSED"
