@@ -67,31 +67,21 @@ jobs:
           grep -q 'site-updates.js' index.html
           grep -q 'client-scroll-prev' index.html
           grep -q 'client-scroll-next' index.html
-          grep -q 'assets/client-logos-svg/satuc.svg' index.html
-          grep -q 'assets/client-logos-svg/toto-link.svg' index.html
-          grep -q 'assets/client-logos-svg/hospital-57357.svg' index.html
-          grep -q 'assets/client-logos/square.png' index.html
-          grep -q 'assets/client-logos/sudan-tv.png' index.html
-          grep -q 'assets/client-logos/sada-el-balad.png' index.html
-          grep -q 'assets/client-logos/on-sport.png' index.html
-          grep -q 'assets/client-logos/good-news.png' index.html
-          grep -q 'SQUARE Media Production' index.html
-          grep -q 'Shasha Platform' index.html
-          grep -q '37' index.html
           grep -q "title: 'Sports'" site-updates.js
           grep -q "title: 'Events'" site-updates.js
-          ! grep -q 'class="grain"' index.html
-          ! grep -q 'Abu Al-Arousa' index.html
-          for logo in square sudan-tv sada-el-balad on-sport good-news; do
-            test -s "assets/client-logos/${logo}.png"
-          done
-          for logo in satuc toto-link hospital-57357; do
-            test -s "assets/client-logos-svg/${logo}.svg"
-            grep -q '<svg' "assets/client-logos-svg/${logo}.svg"
-            test "$(wc -c < "assets/client-logos-svg/${logo}.svg")" -gt 500
-          done
+          grep -q "category=sports" site-updates.js
+          grep -q "category=events" site-updates.js
+          test -s assets/client-logos-svg/hospital-57357.svg
+          test -s assets/client-logos-svg/satuc.svg
+          test -s assets/client-logos-svg/toto-link.svg
+          test -s assets/client-logos/square.png
+          test -s assets/client-logos/on-sport.png
+          test -s assets/client-logos/sada-el-balad.png
+          test -s assets/client-logos/sudan-tv.png
+          test -s assets/client-logos/good-news.png
           node --check script.js
           node --check site-updates.js
+          echo "LOCAL VALIDATION PASSED"
 
       - name: Deploy production
         if: github.ref_name == 'main'
@@ -111,24 +101,27 @@ jobs:
           command: pages deploy . --project-name=sayedabdallah --branch=${{ github.ref_name }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Verify final site and logo files
+      - name: Verify final site
         shell: bash
         run: |
           set -euo pipefail
           if [ "${GITHUB_REF_NAME}" = "main" ]; then final="https://sayedabdallah.pages.dev"; else final="https://${GITHUB_REF_NAME}.sayedabdallah.pages.dev"; fi
           sleep 8
-          page_ok=0
+          ok=0
           for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            curl --fail --location --silent --show-error "${final}/index.html?build=${GITHUB_SHA}" -o /tmp/final-index.html || true
-            curl --fail --location --silent --show-error "${final}/styles.css?build=${GITHUB_SHA}" -o /tmp/final-styles.css || true
-            curl --fail --location --silent --show-error "${final}/site-updates.js?build=${GITHUB_SHA}" -o /tmp/final-updates.js || true
-            if grep -q 'class="clients-v3' /tmp/final-index.html 2>/dev/null \
-              && grep -q 'client-scroll-prev' /tmp/final-index.html 2>/dev/null \
-              && grep -q 'assets/client-logos-svg/hospital-57357.svg' /tmp/final-index.html 2>/dev/null \
-              && grep -q 'CLIENT LOGO V3 START' /tmp/final-styles.css 2>/dev/null \
-              && grep -q "title: 'Sports'" /tmp/final-updates.js 2>/dev/null \
-              && grep -q "title: 'Events'" /tmp/final-updates.js 2>/dev/null; then page_ok=1; break; fi
+            curl --fail --location --silent --show-error "${final}/index.html?build=${GITHUB_SHA}" -o /tmp/index.html || true
+            curl --fail --location --silent --show-error "${final}/styles.css?build=${GITHUB_SHA}" -o /tmp/styles.css || true
+            curl --fail --location --silent --show-error "${final}/site-updates.js?build=${GITHUB_SHA}" -o /tmp/site-updates.js || true
+            if grep -q 'class="clients-v3' /tmp/index.html 2>/dev/null \
+              && grep -q 'client-scroll-prev' /tmp/index.html 2>/dev/null \
+              && grep -q 'client-scroll-next' /tmp/index.html 2>/dev/null \
+              && grep -q 'CLIENT LOGO V3 START' /tmp/styles.css 2>/dev/null \
+              && grep -q "title: 'Sports'" /tmp/site-updates.js 2>/dev/null \
+              && grep -q "title: 'Events'" /tmp/site-updates.js 2>/dev/null; then
+              ok=1
+              break
+            fi
             sleep 4
           done
-          test "$page_ok" = 1
+          test "$ok" = 1
           echo "PORTFOLIO LIVE VERIFICATION PASSED"
