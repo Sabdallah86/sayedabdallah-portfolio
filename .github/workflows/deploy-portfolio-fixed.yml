@@ -23,12 +23,12 @@ jobs:
           curl --fail --location --retry 4 --retry-delay 2 \
             "https://sayedabdallah.pages.dev/script.js" -o script.js
           python tools/build_hybrid.py
-          python tools/add_new_video_links.py
           python tools/apply_client_logos.py
           python tools/merge_client_logo_data.py
           python tools/decode_client_logos.py
           python tools/apply_client_logos_v3.py
           python tools/fix_categories_layout.py
+          python tools/add_new_video_links.py
           python tools/apply_user_logo_overrides.py
           node --check script.js
           node --check site-updates.js
