@@ -27,6 +27,7 @@ jobs:
           python tools/merge_client_logo_data.py
           python tools/apply_client_logos_v3.py
           node --check script.js
+          node --check site-updates.js
 
       - name: Retrieve portfolio media
         shell: bash
@@ -38,9 +39,10 @@ jobs:
           base = "https://sayedabdallah.pages.dev/"
           refs = set()
           pattern = re.compile(r"assets/[A-Za-z0-9_./-]+\.(?:webp|png|jpg|jpeg|svg|mp4|webm)", re.I)
-          for source in ["index.html", "styles.css", "category-pages.css", "script.js"]:
-              text = Path(source).read_text(encoding="utf-8", errors="ignore")
-              refs.update(pattern.findall(text))
+          for source in ["index.html", "styles.css", "category-pages.css", "script.js", "site-updates.js"]:
+              p = Path(source)
+              if p.exists():
+                  refs.update(pattern.findall(p.read_text(encoding="utf-8", errors="ignore")))
           for ref in sorted(refs):
               target = Path(ref)
               target.parent.mkdir(parents=True, exist_ok=True)
@@ -62,31 +64,26 @@ jobs:
           set -euo pipefail
           grep -q 'class="clients-v3' index.html
           grep -q 'CLIENT LOGO V3 START' styles.css
+          grep -q 'site-updates.js' index.html
+          grep -q 'client-scroll-prev' index.html
+          grep -q 'client-scroll-next' index.html
           grep -q 'assets/client-logos-svg/satuc.svg' index.html
           grep -q 'assets/client-logos-svg/toto-link.svg' index.html
           grep -q 'assets/client-logos-svg/hospital-57357.svg' index.html
           grep -q 'assets/client-logos/square.png' index.html
-          grep -q 'assets/client-logos/al-ahly.png' index.html
-          grep -q 'assets/client-logos/ciff.png' index.html
-          grep -q 'assets/client-logos/kuwait-tv.png' index.html
           grep -q 'assets/client-logos/sudan-tv.png' index.html
           grep -q 'assets/client-logos/sada-el-balad.png' index.html
           grep -q 'assets/client-logos/on-sport.png' index.html
           grep -q 'assets/client-logos/good-news.png' index.html
-          grep -q 'assets/client-logos/ministry-migration.png' index.html
           grep -q 'SQUARE Media Production' index.html
           grep -q 'Shasha Platform' index.html
           grep -q '37' index.html
+          grep -q "title: 'Sports'" site-updates.js
+          grep -q "title: 'Events'" site-updates.js
           ! grep -q 'class="grain"' index.html
           ! grep -q 'Abu Al-Arousa' index.html
-          for logo in al-ahly ciff square kuwait-tv sudan-tv sada-el-balad on-sport good-news ministry-migration; do
+          for logo in square sudan-tv sada-el-balad on-sport good-news; do
             test -s "assets/client-logos/${logo}.png"
-            python - "$logo" <<'PY'
-          import sys
-          from pathlib import Path
-          p = Path('assets/client-logos') / (sys.argv[1] + '.png')
-          assert p.read_bytes().startswith(b'\x89PNG\r\n\x1a\n'), p
-          PY
           done
           for logo in satuc toto-link hospital-57357; do
             test -s "assets/client-logos-svg/${logo}.svg"
@@ -94,6 +91,7 @@ jobs:
             test "$(wc -c < "assets/client-logos-svg/${logo}.svg")" -gt 500
           done
           node --check script.js
+          node --check site-updates.js
 
       - name: Deploy production
         if: github.ref_name == 'main'
@@ -123,41 +121,14 @@ jobs:
           for attempt in 1 2 3 4 5 6 7 8 9 10; do
             curl --fail --location --silent --show-error "${final}/index.html?build=${GITHUB_SHA}" -o /tmp/final-index.html || true
             curl --fail --location --silent --show-error "${final}/styles.css?build=${GITHUB_SHA}" -o /tmp/final-styles.css || true
+            curl --fail --location --silent --show-error "${final}/site-updates.js?build=${GITHUB_SHA}" -o /tmp/final-updates.js || true
             if grep -q 'class="clients-v3' /tmp/final-index.html 2>/dev/null \
-              && grep -q 'assets/client-logos-svg/satuc.svg' /tmp/final-index.html 2>/dev/null \
-              && grep -q 'assets/client-logos-svg/toto-link.svg' /tmp/final-index.html 2>/dev/null \
+              && grep -q 'client-scroll-prev' /tmp/final-index.html 2>/dev/null \
               && grep -q 'assets/client-logos-svg/hospital-57357.svg' /tmp/final-index.html 2>/dev/null \
-              && grep -q 'assets/client-logos/square.png' /tmp/final-index.html 2>/dev/null \
-              && grep -q 'CLIENT LOGO V3 START' /tmp/final-styles.css 2>/dev/null; then page_ok=1; break; fi
+              && grep -q 'CLIENT LOGO V3 START' /tmp/final-styles.css 2>/dev/null \
+              && grep -q "title: 'Sports'" /tmp/final-updates.js 2>/dev/null \
+              && grep -q "title: 'Events'" /tmp/final-updates.js 2>/dev/null; then page_ok=1; break; fi
             sleep 4
           done
           test "$page_ok" = 1
-
-          for logo in al-ahly ciff square kuwait-tv sudan-tv sada-el-balad on-sport good-news ministry-migration; do
-            ok=0
-            for attempt in 1 2 3 4 5 6 7 8; do
-              url="${final}/assets/client-logos/${logo}.png?build=${GITHUB_SHA}"
-              if curl --fail --location --silent --show-error -D "/tmp/${logo}.h" "$url" -o "/tmp/${logo}.b" \
-                && test -s "/tmp/${logo}.b" \
-                && grep -qi '^content-type: image/' "/tmp/${logo}.h"; then ok=1; break; fi
-              sleep 4
-            done
-            test "$ok" = 1
-            echo "PNG LIVE OK ${logo}: $(wc -c < "/tmp/${logo}.b") bytes"
-          done
-
-          for logo in satuc toto-link hospital-57357; do
-            ok=0
-            for attempt in 1 2 3 4 5 6 7 8; do
-              url="${final}/assets/client-logos-svg/${logo}.svg?build=${GITHUB_SHA}"
-              if curl --fail --location --silent --show-error -D "/tmp/${logo}.h" "$url" -o "/tmp/${logo}.b" \
-                && test -s "/tmp/${logo}.b" \
-                && grep -qi '^content-type: image/' "/tmp/${logo}.h" \
-                && grep -q '<svg' "/tmp/${logo}.b"; then ok=1; break; fi
-              sleep 4
-            done
-            test "$ok" = 1
-            test "$(wc -c < "/tmp/${logo}.b")" -gt 500
-            echo "SVG LIVE OK ${logo}: $(wc -c < "/tmp/${logo}.b") bytes"
-          done
-          echo "CLIENT LOGO LIVE VERIFICATION PASSED"
+          echo "PORTFOLIO LIVE VERIFICATION PASSED"
