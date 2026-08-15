@@ -4,9 +4,44 @@ import re
 p = Path('index.html')
 html = p.read_text(encoding='utf-8')
 
-# Keep the selected work links correctly separated.
-html = html.replace('href="index.html?category=sports-events">\n          <div class="selected-media"><img src="assets/ciff.webp"', 'href="index.html?category=events">\n          <div class="selected-media"><img src="assets/ciff.webp"', 1)
-html = html.replace('href="index.html?category=sports-events">\n          <div class="selected-media"><img src="assets/al-ahly.webp"', 'href="index.html?category=sports">\n          <div class="selected-media"><img src="assets/al-ahly.webp"', 1)
+# Selected Work must point directly to the live collections, never the legacy
+# combined sports-events category.
+html = re.sub(
+    r'href="index\.html\?category=sports-events"(?=\s*>\s*<div class="selected-media"><img src="assets/ciff\.webp")',
+    'href="index.html?category=events&collection=ciff"',
+    html,
+    count=1,
+)
+html = re.sub(
+    r'href="index\.html\?category=sports-events"(?=\s*>\s*<div class="selected-media"><img src="assets/al-ahly\.webp")',
+    'href="index.html?category=sports&collection=al-ahly-club"',
+    html,
+    count=1,
+)
+
+# Be defensive in case a previous build already rewrote the base category URL.
+html = html.replace(
+    'href="index.html?category=events">\n          <div class="selected-media"><img src="assets/ciff.webp"',
+    'href="index.html?category=events&collection=ciff">\n          <div class="selected-media"><img src="assets/ciff.webp"',
+    1,
+)
+html = html.replace(
+    'href="index.html?category=sports">\n          <div class="selected-media"><img src="assets/al-ahly.webp"',
+    'href="index.html?category=sports&collection=al-ahly-club">\n          <div class="selected-media"><img src="assets/al-ahly.webp"',
+    1,
+)
+
+# Teatro in Selected Work should always lead somewhere usable. The direct MP4
+# player is kept inside Series, while the homepage card opens the Series page.
+teatro_article = re.compile(
+    r'<article class="selected-card project-video reveal" data-video="assets/teatro-series-promo\.mp4"[\s\S]*?</article>',
+    re.M,
+)
+teatro_link = '''<a class="selected-card reveal" href="index.html?category=series" aria-label="Open Teatro in Series">
+          <div class="selected-media"><img src="assets/teatro-series-promo.webp" alt="Teatro"><span class="play-button">▶</span></div>
+          <div class="selected-meta"><p>Series Promo</p><h3>Teatro</h3><small>Video Editing</small></div>
+        </a>'''
+html, _ = teatro_article.subn(teatro_link, html, count=1)
 
 new_grid = '''<div class="category-grid">
         <a class="category-card reveal category-link" href="index.html?category=commercial"><span>01</span><h3>Commercial &amp;<br>Branded Content</h3><p>Campaigns, ads and brand films.</p><b>View Projects →</b></a>
@@ -21,6 +56,9 @@ new_grid = '''<div class="category-grid">
 html, n = re.subn(r'<div class="category-grid">[\s\S]*?</div>\n    </section>', new_grid + '\n    </section>', html, count=1)
 if n != 1:
     raise RuntimeError('Could not replace category grid')
+
+# No homepage link should ever point to the old combined category.
+html = html.replace('index.html?category=sports-events', 'index.html?category=sports')
 
 p.write_text(html, encoding='utf-8')
 
@@ -39,4 +77,4 @@ text += r'''
 /* SAFE CATEGORY FIX END */
 '''
 css.write_text(text, encoding='utf-8')
-print('Restored seven stable categories including AI Work and normalized client logo display.')
+print('Separated Sports and Events, fixed Selected Work collection links, and routed Teatro to Series.')
