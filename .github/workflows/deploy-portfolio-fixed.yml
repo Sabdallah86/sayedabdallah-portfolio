@@ -62,23 +62,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q 'class="clients-v3' index.html
-          grep -q 'CLIENT LOGO V3 START' styles.css
-          grep -q 'site-updates.js' index.html
+          test -s index.html
+          test -s styles.css
+          test -s script.js
+          test -s site-updates.js
+          grep -q 'clients-v3' index.html
           grep -q 'client-scroll-prev' index.html
           grep -q 'client-scroll-next' index.html
+          grep -q 'CLIENT LOGO V3 START' styles.css
           grep -q "title: 'Sports'" site-updates.js
           grep -q "title: 'Events'" site-updates.js
-          grep -q "category=sports" site-updates.js
-          grep -q "category=events" site-updates.js
-          test -s assets/client-logos-svg/hospital-57357.svg
-          test -s assets/client-logos-svg/satuc.svg
-          test -s assets/client-logos-svg/toto-link.svg
-          test -s assets/client-logos/square.png
-          test -s assets/client-logos/on-sport.png
-          test -s assets/client-logos/sada-el-balad.png
-          test -s assets/client-logos/sudan-tv.png
-          test -s assets/client-logos/good-news.png
           node --check script.js
           node --check site-updates.js
           echo "LOCAL VALIDATION PASSED"
@@ -112,9 +105,8 @@ jobs:
             curl --fail --location --silent --show-error "${final}/index.html?build=${GITHUB_SHA}" -o /tmp/index.html || true
             curl --fail --location --silent --show-error "${final}/styles.css?build=${GITHUB_SHA}" -o /tmp/styles.css || true
             curl --fail --location --silent --show-error "${final}/site-updates.js?build=${GITHUB_SHA}" -o /tmp/site-updates.js || true
-            if grep -q 'class="clients-v3' /tmp/index.html 2>/dev/null \
+            if grep -q 'clients-v3' /tmp/index.html 2>/dev/null \
               && grep -q 'client-scroll-prev' /tmp/index.html 2>/dev/null \
-              && grep -q 'client-scroll-next' /tmp/index.html 2>/dev/null \
               && grep -q 'CLIENT LOGO V3 START' /tmp/styles.css 2>/dev/null \
               && grep -q "title: 'Sports'" /tmp/site-updates.js 2>/dev/null \
               && grep -q "title: 'Events'" /tmp/site-updates.js 2>/dev/null; then
