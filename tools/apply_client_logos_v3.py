@@ -30,8 +30,8 @@ NAME_TO_LOGO = {
 }
 
 WHITE_BG_LOGOS = {
-    'al-ahly','hospital-57357','al-ahram','ciff','cbc','al-nahar',
-    'al-wathaeqya','galaa-medical','kuwait-tv','ministry-migration'
+    'al-ahly','ciff','cbc','al-nahar','al-wathaeqya',
+    'galaa-medical','kuwait-tv','ministry-migration'
 }
 SVG_LOGOS = {'satuc','toto-link','hospital-57357'}
 
