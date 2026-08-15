@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 script_path = Path('script.js')
 text = script_path.read_text(encoding='utf-8')
@@ -7,8 +8,7 @@ marker = "function escapeHTML(value='')"
 if marker not in text:
     raise RuntimeError('Could not find categoryData insertion point')
 
-if 'PORTFOLIO VIDEO ADDITIONS START' not in text:
-    patch = r'''
+patch = r'''
 // PORTFOLIO VIDEO ADDITIONS START
 if (!categoryData.commercial.projects.some(p => p.youtube === 'SYQvIrjg8qw')) {
   categoryData.commercial.projects.push({
@@ -18,25 +18,12 @@ if (!categoryData.commercial.projects.some(p => p.youtube === 'SYQvIrjg8qw')) {
   });
 }
 
-const sportsCategory = categoryData['sports-events'];
-if (sportsCategory) {
-  const ahlyIndex = sportsCategory.projects.findIndex(p => p.title === 'Al Ahly Club');
-  const ahlyProject = {
-    title:'Al Ahly Club', subtitle:'Sports Content · Video Collection', index:'SE01',
-    image:'assets/al-ahly.webp', collection:'al-ahly-club', badge:'Open Collection'
-  };
-  if (ahlyIndex >= 0) sportsCategory.projects[ahlyIndex] = ahlyProject;
-  else sportsCategory.projects.unshift(ahlyProject);
-  sportsCategory.collections = sportsCategory.collections || {};
-  sportsCategory.collections['al-ahly-club'] = {
-    title:'Al Ahly Club', kicker:'Sports Content',
-    description:'Selected Al Ahly Club edits and promotional sports content.',
-    cover:'assets/al-ahly.webp',
-    projects:[
-      { title:'Al Ahly Club — Selected Video 01', subtitle:'Al Ahly Club · Sports Edit', index:'AH01', image:'https://i.ytimg.com/vi/N4uGPUETGb4/hqdefault.jpg', imageFallback:'assets/al-ahly.webp', youtube:'N4uGPUETGb4', badge:'Watch Video' },
-      { title:'Al Ahly Club — Selected Video 02', subtitle:'Al Ahly Club · Sports Edit', index:'AH02', image:'https://i.ytimg.com/vi/1eFghNwpODA/hqdefault.jpg', imageFallback:'assets/al-ahly.webp', youtube:'1eFghNwpODA', badge:'Watch Video' }
-    ]
-  };
+if (!categoryData.series.projects.some(p => p.youtube === 'gLtyCZRuCCo')) {
+  categoryData.series.projects.push({
+    title:'Series — Selected Video', subtitle:'Series · Video Editing', index:'S03',
+    image:'https://i.ytimg.com/vi/gLtyCZRuCCo/hqdefault.jpg', imageFallback:'assets/teatro-series-promo.webp',
+    youtube:'gLtyCZRuCCo', badge:'Watch Video'
+  });
 }
 
 categoryData['more-work'] = {
@@ -48,12 +35,20 @@ categoryData['more-work'] = {
     { title:'Selected Work 01', subtitle:'Additional Project · Video Editing', index:'MW01', image:'https://i.ytimg.com/vi/G1aMXgXTAog/hqdefault.jpg', youtube:'G1aMXgXTAog', badge:'Watch Video' },
     { title:'Selected Work 02', subtitle:'Additional Project · Video Editing', index:'MW02', image:'https://i.ytimg.com/vi/fbrKZPloehw/hqdefault.jpg', youtube:'fbrKZPloehw', badge:'Watch Video' },
     { title:'Selected Work 03', subtitle:'Additional Project · Video Editing', index:'MW03', image:'https://i.ytimg.com/vi/T1VOBnWPwtE/hqdefault.jpg', youtube:'T1VOBnWPwtE', badge:'Watch Video' },
-    { title:'Selected Work 04', subtitle:'Additional Project · Video Editing', index:'MW04', image:'https://i.ytimg.com/vi/0UY-_mTpUDA/hqdefault.jpg', youtube:'0UY-_mTpUDA', badge:'Watch Video' }
+    { title:'Selected Work 04', subtitle:'Additional Project · Video Editing', index:'MW04', image:'https://i.ytimg.com/vi/0UY-_mTpUDA/hqdefault.jpg', youtube:'0UY-_mTpUDA', badge:'Watch Video' },
+    { title:'Selected Work 05', subtitle:'Additional Project · Video Editing', index:'MW05', image:'https://i.ytimg.com/vi/oIS4SghLtSs/hqdefault.jpg', youtube:'oIS4SghLtSs', badge:'Watch Video' },
+    { title:'Selected Work 06', subtitle:'Additional Project · Video Editing', index:'MW06', image:'https://i.ytimg.com/vi/s72BulxLJgM/hqdefault.jpg', youtube:'s72BulxLJgM', badge:'Watch Video' },
+    { title:'Selected Work 07', subtitle:'Additional Project · Video Editing', index:'MW07', image:'https://i.ytimg.com/vi/5jaNOku5Tw0/hqdefault.jpg', youtube:'5jaNOku5Tw0', badge:'Watch Video' }
   ]
 };
 // PORTFOLIO VIDEO ADDITIONS END
 
 '''
+
+block = re.compile(r"// PORTFOLIO VIDEO ADDITIONS START[\s\S]*?// PORTFOLIO VIDEO ADDITIONS END\n*", re.M)
+if block.search(text):
+    text = block.sub(patch, text, count=1)
+else:
     text = text.replace(marker, patch + marker, 1)
 
 script_path.write_text(text, encoding='utf-8')
@@ -68,4 +63,4 @@ if 'category=more-work' not in html:
     html = html.replace(ai_card, ai_card + '\n        ' + more_card, 1)
 index_path.write_text(html, encoding='utf-8')
 
-print('Added Al Ahly collection, commercial YouTube ad, and More Selected Work category.')
+print('Added commercial, series and More Selected Work YouTube videos without duplicates.')
