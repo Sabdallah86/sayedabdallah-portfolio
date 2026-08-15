@@ -26,6 +26,7 @@ jobs:
           python tools/apply_client_logos.py
           python tools/merge_client_logo_data.py
           python tools/apply_client_logos_v3.py
+          python tools/fix_categories_layout.py
           node --check script.js
           node --check site-updates.js
 
@@ -70,8 +71,12 @@ jobs:
           grep -q 'client-scroll-prev' index.html
           grep -q 'client-scroll-next' index.html
           grep -q 'CLIENT LOGO V3 START' styles.css
+          grep -q 'SAFE CATEGORY FIX START' styles.css
+          grep -q 'category=ai-work' index.html
+          grep -q '>AI Work<' index.html
           grep -q "title: 'Sports'" site-updates.js
           grep -q "title: 'Events'" site-updates.js
+          grep -q "title: 'AI Work'" site-updates.js
           node --check script.js
           node --check site-updates.js
           echo "LOCAL VALIDATION PASSED"
@@ -107,9 +112,11 @@ jobs:
             curl --fail --location --silent --show-error "${final}/site-updates.js?build=${GITHUB_SHA}" -o /tmp/site-updates.js || true
             if grep -q 'clients-v3' /tmp/index.html 2>/dev/null \
               && grep -q 'client-scroll-prev' /tmp/index.html 2>/dev/null \
-              && grep -q 'CLIENT LOGO V3 START' /tmp/styles.css 2>/dev/null \
+              && grep -q 'SAFE CATEGORY FIX START' /tmp/styles.css 2>/dev/null \
+              && grep -q 'category=ai-work' /tmp/index.html 2>/dev/null \
               && grep -q "title: 'Sports'" /tmp/site-updates.js 2>/dev/null \
-              && grep -q "title: 'Events'" /tmp/site-updates.js 2>/dev/null; then
+              && grep -q "title: 'Events'" /tmp/site-updates.js 2>/dev/null \
+              && grep -q "title: 'AI Work'" /tmp/site-updates.js 2>/dev/null; then
               ok=1
               break
             fi
