@@ -29,12 +29,6 @@ NAME_TO_LOGO = {
     'Shasha Platform':'shasha'
 }
 
-WHITE_BG_LOGOS = {
-    'al-ahly','ciff','cbc','al-nahar','al-wathaeqya',
-    'galaa-medical','kuwait-tv','ministry-migration'
-}
-SVG_LOGOS = {'satuc','toto-link','hospital-57357'}
-
 
 def initials(name):
     ignored = {'channel','foundation','production','hospital','television','platform'}
@@ -44,18 +38,15 @@ def initials(name):
 
 
 def logo_source(slug):
-    if slug in WHITE_BG_LOGOS:
-        p = Path('assets/client-logos-white') / f'{slug}.webp'
-        if p.exists():
-            return str(p).replace('\\','/'), True
-    if slug in SVG_LOGOS:
-        p = Path('assets/client-logos-svg') / f'{slug}.svg'
-        if p.exists():
-            return str(p).replace('\\','/'), False
-    p = Path('assets/client-logos') / f'{slug}.png'
-    if p.exists():
-        return str(p).replace('\\','/'), False
-    return None, False
+    # Exact user-approved white-background/color images always win.
+    preferred = Path('assets/client-logos-white') / f'{slug}.webp'
+    if preferred.exists() and preferred.stat().st_size:
+        return str(preferred).replace('\\','/')
+    # All remaining merged logo data is decoded before this script runs.
+    generated = Path('assets/client-logos') / f'{slug}.png'
+    if generated.exists() and generated.stat().st_size:
+        return str(generated).replace('\\','/')
+    return None
 
 
 def brand(name):
@@ -63,13 +54,12 @@ def brand(name):
     mark = escape(initials(name))
     slug = NAME_TO_LOGO.get(name)
     if slug:
-        src, white_bg = logo_source(slug)
+        src = logo_source(slug)
         if src:
-            cls = ' client-brand-v3-user' if white_bg else ''
             return (
-                f'<div class="client-brand-v3 client-brand-v3-logo{cls}">'
+                f'<div class="client-brand-v3 client-brand-v3-logo">'
                 f'<span class="client-logo-v3-mark">'
-                f'<img src="{src}" alt="" loading="lazy" decoding="async" '
+                f'<img src="{src}" alt="{safe} logo" loading="lazy" decoding="async" '
                 f'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'
                 f'<i class="client-logo-v3-fallback" aria-hidden="true">{mark}</i></span>'
                 f'<span class="client-name-v3">{safe}</span></div>'
@@ -126,17 +116,17 @@ css += r'''
 .clients-v3{overflow:hidden;padding-top:54px!important;padding-bottom:54px!important;background:#030303}
 .clients-v3-title{display:flex;align-items:center;gap:22px;margin-bottom:18px}.clients-v3-title .kicker{margin:0;white-space:nowrap}.clients-v3-title>span{height:1px;flex:1;background:rgba(211,164,47,.62)}
 .clients-v3-row{display:grid;grid-template-columns:46px minmax(0,1fr) 46px;align-items:center;border-top:1px solid rgba(211,164,47,.58)}.clients-v3-row:last-child{border-bottom:1px solid rgba(211,164,47,.58)}
-.clients-v3-viewport{overflow:hidden;min-width:0}.clients-v3-track{display:flex;width:max-content;will-change:transform}.clients-v3-group{display:flex;align-items:center;gap:38px;padding:27px 19px;flex:0 0 auto}
+.clients-v3-viewport{overflow:hidden;min-width:0}.clients-v3-track{display:flex;width:max-content;will-change:transform}.clients-v3-group{display:flex;align-items:center;gap:34px;padding:22px 19px;flex:0 0 auto}
 .clients-v3-left .clients-v3-track{animation:clientsV3Left 78s linear infinite}.clients-v3-right .clients-v3-track{animation:clientsV3Right 82s linear infinite}.clients-v3-row:hover .clients-v3-track{animation-play-state:paused}
-.client-scroll-btn{appearance:none;border:0;background:transparent;color:#d3a42f;font-size:24px;line-height:1;cursor:pointer;height:100%;min-height:78px;transition:.2s ease;z-index:2}.client-scroll-btn:hover{color:#fff;background:rgba(211,164,47,.08)}
-.client-brand-v3{display:flex;align-items:center;gap:12px;width:235px;min-width:235px;max-width:235px;height:76px;flex:0 0 235px;overflow:hidden;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
-.client-logo-v3-mark{width:92px;min-width:92px;height:66px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:transparent!important;border:0!important}.client-brand-v3 img{display:block!important;width:100%!important;height:100%!important;object-fit:contain!important;object-position:center!important;filter:none!important;opacity:1}.client-brand-v3-user .client-logo-v3-mark{background:#fff}.client-brand-v3-user img{padding:4px;box-sizing:border-box}
-.client-logo-v3-fallback{display:none;align-items:center;justify-content:center;width:100%;height:100%;font-family:'Bebas Neue',Inter,Arial,sans-serif;font-style:normal;font-size:27px;letter-spacing:.06em;color:#d3a42f}.client-logo-v3-fallback.visible{display:flex}.client-name-v3{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap!important;font-family:Inter,Arial,sans-serif;color:#d8d8d5;font-size:11px!important;font-weight:700;letter-spacing:.075em;text-transform:uppercase;line-height:1.2!important}
+.client-scroll-btn{appearance:none;border:0;background:transparent;color:#d3a42f;font-size:24px;line-height:1;cursor:pointer;height:100%;min-height:90px;transition:.2s ease;z-index:2}.client-scroll-btn:hover{color:#fff;background:rgba(211,164,47,.08)}
+.client-brand-v3{display:flex;align-items:center;gap:12px;width:245px;min-width:245px;max-width:245px;height:92px;flex:0 0 245px;overflow:hidden;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
+.client-logo-v3-mark{width:112px;min-width:112px;height:78px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff!important;border:0!important;padding:6px}.client-brand-v3 img{display:block!important;width:100%!important;height:100%!important;object-fit:contain!important;object-position:center!important;filter:none!important;opacity:1!important;transform:none!important}
+.client-logo-v3-fallback{display:none;align-items:center;justify-content:center;width:100%;height:100%;font-family:'Bebas Neue',Inter,Arial,sans-serif;font-style:normal;font-size:27px;letter-spacing:.06em;color:#d3a42f;background:#030303}.client-logo-v3-fallback.visible{display:flex}.client-name-v3{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap!important;font-family:Inter,Arial,sans-serif;color:#d8d8d5;font-size:11px!important;font-weight:700;letter-spacing:.075em;text-transform:uppercase;line-height:1.2!important}
 @keyframes clientsV3Left{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}@keyframes clientsV3Right{from{transform:translate3d(-50%,0,0)}to{transform:translate3d(0,0,0)}}
-@media(max-width:760px){.clients-v3{padding-top:38px!important;padding-bottom:38px!important}.clients-v3-title{gap:14px;margin-bottom:12px}.clients-v3-title .kicker{font-size:11px!important;letter-spacing:.16em}.clients-v3-row{grid-template-columns:34px minmax(0,1fr) 34px}.client-scroll-btn{font-size:19px;min-height:68px}.clients-v3-group{gap:22px;padding:20px 11px}.client-brand-v3{width:188px;min-width:188px;max-width:188px;height:62px;flex-basis:188px;gap:9px}.client-logo-v3-mark{width:72px;min-width:72px;height:54px}.client-name-v3{font-size:9.5px!important;letter-spacing:.055em}.clients-v3-left .clients-v3-track{animation-duration:64s}.clients-v3-right .clients-v3-track{animation-duration:68s}}
-@media(max-width:420px){.clients-v3-group{gap:16px;padding-left:8px;padding-right:8px}.client-brand-v3{width:174px;min-width:174px;max-width:174px;flex-basis:174px}.client-logo-v3-mark{width:66px;min-width:66px;height:50px}.client-name-v3{font-size:9px!important}}
+@media(max-width:760px){.clients-v3{padding-top:38px!important;padding-bottom:38px!important}.clients-v3-title{gap:14px;margin-bottom:12px}.clients-v3-title .kicker{font-size:11px!important;letter-spacing:.16em}.clients-v3-row{grid-template-columns:34px minmax(0,1fr) 34px}.client-scroll-btn{font-size:19px;min-height:82px}.clients-v3-group{gap:20px;padding:17px 10px}.client-brand-v3{width:205px;min-width:205px;max-width:205px;height:80px;flex-basis:205px;gap:9px}.client-logo-v3-mark{width:94px;min-width:94px;height:68px;padding:5px}.client-name-v3{font-size:9.5px!important;letter-spacing:.055em}.clients-v3-left .clients-v3-track{animation-duration:64s}.clients-v3-right .clients-v3-track{animation-duration:68s}}
+@media(max-width:420px){.clients-v3-group{gap:14px;padding-left:8px;padding-right:8px}.client-brand-v3{width:190px;min-width:190px;max-width:190px;flex-basis:190px}.client-logo-v3-mark{width:86px;min-width:86px;height:64px}.client-name-v3{font-size:9px!important}}
 @media(prefers-reduced-motion:reduce){.clients-v3-track{animation:none!important}}
 /* CLIENT LOGO V3 END */
 '''
 styles_path.write_text(css, encoding='utf-8')
-print(f'Rebuilt client strip with {len(CLIENTS)} clients, manual arrows and automatic animation.')
+print(f'Rebuilt client strip with {len(CLIENTS)} clients, exact color logo priority, manual arrows and automatic animation.')
