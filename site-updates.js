@@ -23,7 +23,7 @@
         title: 'AI Work',
         kicker: 'AI-Driven Creativity',
         description: 'AI-assisted visual storytelling, creative development and selected experiments.',
-        cover: 'assets/showreel.webp',
+        cover: 'assets/ciff.webp',
         projects: []
       };
     }
