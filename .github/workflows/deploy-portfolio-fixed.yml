@@ -25,6 +25,7 @@ jobs:
           python tools/build_hybrid.py
           python tools/apply_client_logos.py
           python tools/merge_client_logo_data.py
+          python tools/decode_client_logos.py
           python tools/apply_client_logos_v3.py
           python tools/fix_categories_layout.py
           node --check script.js
@@ -77,6 +78,9 @@ jobs:
           grep -q "title: 'Sports'" site-updates.js
           grep -q "title: 'Events'" site-updates.js
           grep -q "title: 'AI Work'" site-updates.js
+          for logo in al-ahly hospital-57357 al-ahram ciff cbc egyptair al-nahar al-wathaeqya galaa-medical kuwait-tv mica ministry-migration on-sport on sada-el-balad satuc shasha souad-kafafi square sudan-tv; do
+            test -s "assets/client-logos-white/${logo}.webp" || test -s "assets/client-logos/${logo}.png"
+          done
           node --check script.js
           node --check site-updates.js
           echo "LOCAL VALIDATION PASSED"
