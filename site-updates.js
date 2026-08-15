@@ -1,5 +1,5 @@
 (() => {
-  function splitSportsEvents() {
+  function ensureCategoryData() {
     if (typeof categoryData !== 'undefined') {
       categoryData.sports = {
         title: 'Sports',
@@ -19,33 +19,18 @@
           { title:'Cairo International Film Festival', subtitle:'Event Coverage · Video Editing', index:'EV01', image:'assets/ciff.webp' }
         ]
       };
-      delete categoryData['sports-events'];
-    }
-
-    document.querySelectorAll('a[href*="category=sports-events"]').forEach(link => {
-      const type = (link.dataset.category || '').toLowerCase();
-      link.href = type === 'events' ? 'index.html?category=events' : 'index.html?category=sports';
-    });
-
-    const grid = document.querySelector('.category-grid');
-    if (grid) {
-      const combined = [...grid.querySelectorAll('.category-link')].find(a => /sports\s*&\s*events/i.test(a.textContent));
-      if (combined) {
-        const sports = document.createElement('a');
-        sports.className = combined.className;
-        sports.href = 'index.html?category=sports';
-        sports.innerHTML = '<span class="category-icon">◉</span><h3>Sports</h3><p>Sports edits, promos and club content.</p><span class="category-action">View Projects →</span>';
-        const events = document.createElement('a');
-        events.className = combined.className;
-        events.href = 'index.html?category=events';
-        events.innerHTML = '<span class="category-icon">◆</span><h3>Events</h3><p>Festival and event coverage.</p><span class="category-action">View Projects →</span>';
-        combined.replaceWith(sports, events);
-      }
+      categoryData['ai-work'] = {
+        title: 'AI Work',
+        kicker: 'AI-Driven Creativity',
+        description: 'AI-assisted visual storytelling, creative development and selected experiments.',
+        cover: 'assets/showreel.webp',
+        projects: []
+      };
     }
 
     const params = new URLSearchParams(location.search);
     const requested = params.get('category');
-    if ((requested === 'sports' || requested === 'events') && typeof renderCategoryPage === 'function') {
+    if ((requested === 'sports' || requested === 'events' || requested === 'ai-work') && typeof renderCategoryPage === 'function') {
       renderCategoryPage(requested, params.get('collection'));
     } else if (requested === 'sports-events' && typeof renderCategoryPage === 'function') {
       history.replaceState(null, '', 'index.html?category=sports');
@@ -75,6 +60,6 @@
     });
   }
 
-  splitSportsEvents();
+  ensureCategoryData();
   clientControls();
 })();
