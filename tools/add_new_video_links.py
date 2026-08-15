@@ -61,12 +61,11 @@ script_path.write_text(text, encoding='utf-8')
 index_path = Path('index.html')
 html = index_path.read_text(encoding='utf-8')
 if 'category=more-work' not in html:
-    old_motion = '<a class="category-card reveal category-link" href="index.html?category=motion-graphics"><span>06</span><h3>Motion Graphics<br>&amp; 3D</h3><p>Titles, graphics and visual systems.</p><b>View Projects →</b></a>'
-    more_card = '<a class="category-card reveal category-link" href="index.html?category=more-work"><span>06</span><h3>More Selected<br>Work</h3><p>Additional selected projects across different formats.</p><b>View Projects →</b></a>'
-    new_motion = '<a class="category-card reveal category-link" href="index.html?category=motion-graphics"><span>07</span><h3>Motion Graphics<br>&amp; 3D</h3><p>Titles, graphics and visual systems.</p><b>View Projects →</b></a>'
-    if old_motion not in html:
-        raise RuntimeError('Home category-card insertion anchor not found')
-    html = html.replace(old_motion, more_card + '\n        ' + new_motion, 1)
+    ai_card = '<a class="category-card reveal category-link" href="index.html?category=ai-work"><span>07</span><h3>AI Work</h3><p>AI-assisted visual storytelling and creative experiments.</p><b>View Projects →</b></a>'
+    more_card = '<a class="category-card reveal category-link" href="index.html?category=more-work"><span>08</span><h3>More Selected<br>Work</h3><p>Additional selected projects across different formats.</p><b>View Projects →</b></a>'
+    if ai_card not in html:
+        raise RuntimeError('AI Work category-card insertion anchor not found')
+    html = html.replace(ai_card, ai_card + '\n        ' + more_card, 1)
 index_path.write_text(html, encoding='utf-8')
 
 print('Added Al Ahly collection, commercial YouTube ad, and More Selected Work category.')
