@@ -43,6 +43,13 @@ NAME_TO_LOGO = {
     'Shasha Platform': 'shasha',
 }
 
+# First test batch supplied by the user: original colours on white backgrounds.
+# Only these logo file sources are overridden; the layout and all other site data stay unchanged.
+WHITE_BG_LOGOS = {
+    'al-ahly', 'hospital-57357', 'al-ahram', 'ciff', 'cbc',
+    'al-nahar', 'al-wathaeqya', 'galaa-medical', 'kuwait-tv', 'ministry-migration'
+}
+
 # These three use the clean vector versions created from the user supplied logos.
 SUPPLIED_SVG = {'satuc', 'toto-link', 'hospital-57357'}
 
@@ -76,6 +83,14 @@ for name, slug in NAME_TO_LOGO.items():
         if not path.exists() or path.stat().st_size < 100:
             raise RuntimeError(f'Logo file missing or empty for {name}: {path}')
 
+for slug in WHITE_BG_LOGOS:
+    path = Path('assets/client-logos-white') / f'{slug}.webp'
+    if not path.exists() or path.stat().st_size < 100:
+        raise RuntimeError(f'White-background logo missing or empty: {path}')
+    raw = path.read_bytes()
+    if not (raw.startswith(b'RIFF') and raw[8:12] == b'WEBP'):
+        raise RuntimeError(f'Invalid WEBP logo: {path}')
+
 
 def initials(name):
     ignored = {'channel', 'foundation', 'production', 'hospital', 'television', 'platform'}
@@ -89,14 +104,16 @@ def brand(name):
     safe_initials = escape(initials(name))
     slug = NAME_TO_LOGO.get(name)
     if slug:
-        src = (f'assets/client-logos-svg/{slug}.svg' if slug in SUPPLIED_SVG
-               else f'assets/client-logos/{slug}.png')
+        legacy_src = (f'assets/client-logos-svg/{slug}.svg' if slug in SUPPLIED_SVG
+                      else f'assets/client-logos/{slug}.png')
+        src = (f'assets/client-logos-white/{slug}.webp' if slug in WHITE_BG_LOGOS
+               else legacy_src)
         # Empty alt prevents browsers from dumping a long alt string into the layout.
         # If an asset cannot render, the image hides and a clean text mark remains.
         return (
             f'<div class="client-brand-v3 client-brand-v3-logo">'
             f'<span class="client-logo-v3-mark">'
-            f'<img src="{src}" alt="" loading="lazy" decoding="async" '
+            f'<img src="{src}" data-legacy-src="{legacy_src}" alt="" loading="lazy" decoding="async" '
             f'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'
             f'<i class="client-logo-v3-fallback" aria-hidden="true">{safe_initials}</i>'
             f'</span>'
