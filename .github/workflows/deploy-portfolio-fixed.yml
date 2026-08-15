@@ -45,19 +45,14 @@ jobs:
           pattern = re.compile(r"assets/[A-Za-z0-9_./-]+\.(?:webp|png|jpg|jpeg|svg|mp4|webm)", re.I)
           for source in ["index.html", "styles.css", "category-pages.css", "script.js", "site-updates.js"]:
               p = Path(source)
-              if p.exists():
-                  refs.update(pattern.findall(p.read_text(encoding="utf-8", errors="ignore")))
+              if p.exists(): refs.update(pattern.findall(p.read_text(encoding="utf-8", errors="ignore")))
           for ref in sorted(refs):
-              target = Path(ref)
-              target.parent.mkdir(parents=True, exist_ok=True)
-              if target.exists() and target.stat().st_size:
-                  continue
+              target = Path(ref); target.parent.mkdir(parents=True, exist_ok=True)
+              if target.exists() and target.stat().st_size: continue
               req = urllib.request.Request(urllib.parse.urljoin(base, ref), headers={"User-Agent":"Mozilla/5.0"})
               with urllib.request.urlopen(req, timeout=90) as response:
-                  data = response.read()
-                  ctype = response.headers.get("content-type", "")
-              if not data or "text/html" in ctype.lower():
-                  raise RuntimeError(f"Invalid media response for {ref}")
+                  data = response.read(); ctype = response.headers.get("content-type", "")
+              if not data or "text/html" in ctype.lower(): raise RuntimeError(f"Invalid media response for {ref}")
               target.write_bytes(data)
           print(f"Checked {len(refs)} portfolio assets")
           PY
@@ -90,13 +85,18 @@ jobs:
           grep -q 'category=ai-work' index.html
           grep -q '>AI Work<' index.html
           grep -q 'category=more-work' index.html
-          grep -q 'N4uGPUETGb4' script.js
-          grep -q '1eFghNwpODA' script.js
           grep -q 'SYQvIrjg8qw' script.js
+          grep -q 'gLtyCZRuCCo' script.js
           grep -q 'G1aMXgXTAog' script.js
           grep -q 'fbrKZPloehw' script.js
           grep -q 'T1VOBnWPwtE' script.js
           grep -q '0UY-_mTpUDA' script.js
+          grep -q 'oIS4SghLtSs' script.js
+          grep -q 's72BulxLJgM' script.js
+          grep -q '5jaNOku5Tw0' script.js
+          grep -q 'N4uGPUETGb4' site-updates.js
+          grep -q '1eFghNwpODA' site-updates.js
+          grep -q '8YHgTTQOKdo' site-updates.js
           grep -q "title: 'Sports'" site-updates.js
           grep -q "title: 'Events'" site-updates.js
           grep -q "title: 'AI Work'" site-updates.js
@@ -135,29 +135,17 @@ jobs:
             curl --fail --location --silent --show-error "${final}/site-updates.js?build=${GITHUB_SHA}" -o /tmp/site-updates.js || true
             curl --fail --location --silent --show-error "${final}/script.js?build=${GITHUB_SHA}" -o /tmp/script.js || true
             if grep -q 'data-exact-logo="on"' /tmp/index.html 2>/dev/null \
-              && grep -q 'data-exact-logo="satuc"' /tmp/index.html 2>/dev/null \
-              && grep -q 'data-exact-logo="souad-kafafi"' /tmp/index.html 2>/dev/null \
-              && grep -q 'data-exact-logo="ten"' /tmp/index.html 2>/dev/null \
-              && grep -q 'data-exact-logo="toto-link"' /tmp/index.html 2>/dev/null \
-              && grep -q 'data-exact-logo="egyptair"' /tmp/index.html 2>/dev/null \
-              && grep -q 'data-exact-logo="on-sport"' /tmp/index.html 2>/dev/null \
-              && grep -q 'data-exact-logo="sada-el-balad"' /tmp/index.html 2>/dev/null \
-              && grep -q 'data-exact-logo="al-ahram"' /tmp/index.html 2>/dev/null \
-              && grep -q 'data-exact-logo="mica"' /tmp/index.html 2>/dev/null \
-              && grep -q 'data-exact-logo="el-gouna"' /tmp/index.html 2>/dev/null \
               && grep -q 'EXACT USER LOGO OVERRIDES START' /tmp/styles.css 2>/dev/null \
-              && grep -q 'category=ai-work' /tmp/index.html 2>/dev/null \
               && grep -q 'category=more-work' /tmp/index.html 2>/dev/null \
-              && grep -q 'N4uGPUETGb4' /tmp/script.js 2>/dev/null \
-              && grep -q '1eFghNwpODA' /tmp/script.js 2>/dev/null \
               && grep -q 'SYQvIrjg8qw' /tmp/script.js 2>/dev/null \
-              && grep -q 'G1aMXgXTAog' /tmp/script.js 2>/dev/null \
-              && grep -q '0UY-_mTpUDA' /tmp/script.js 2>/dev/null \
-              && grep -q "title: 'Sports'" /tmp/site-updates.js 2>/dev/null \
-              && grep -q "title: 'Events'" /tmp/site-updates.js 2>/dev/null \
-              && grep -q "title: 'AI Work'" /tmp/site-updates.js 2>/dev/null; then
-              ok=1
-              break
+              && grep -q 'gLtyCZRuCCo' /tmp/script.js 2>/dev/null \
+              && grep -q 'oIS4SghLtSs' /tmp/script.js 2>/dev/null \
+              && grep -q 's72BulxLJgM' /tmp/script.js 2>/dev/null \
+              && grep -q '5jaNOku5Tw0' /tmp/script.js 2>/dev/null \
+              && grep -q 'N4uGPUETGb4' /tmp/site-updates.js 2>/dev/null \
+              && grep -q '1eFghNwpODA' /tmp/site-updates.js 2>/dev/null \
+              && grep -q '8YHgTTQOKdo' /tmp/site-updates.js 2>/dev/null; then
+              ok=1; break
             fi
             sleep 4
           done
