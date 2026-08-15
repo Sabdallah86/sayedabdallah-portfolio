@@ -40,12 +40,10 @@ html = index_path.read_text(encoding='utf-8')
 
 for name, slug in OVERRIDES.items():
     replacement = exact_brand(name, slug)
-    # The client strip is duplicated for seamless animation, so replace every occurrence.
+    # Never cross a client-card closing div. Each replacement is isolated to one card.
     pattern = re.compile(
-        r'<div class="client-brand-v3[^>]*>.*?<span class="client-name-v3">'
-        + re.escape(name)
-        + r'</span></div>',
-        re.S,
+        r'<div class="client-brand-v3[^>]*>(?:(?!</div>)[\s\S])*?'
+        r'<span class="client-name-v3">' + re.escape(name) + r'</span></div>'
     )
     html, count = pattern.subn(replacement, html)
     if count == 0:
