@@ -23,6 +23,7 @@ jobs:
           curl --fail --location --retry 4 --retry-delay 2 \
             "https://sayedabdallah.pages.dev/script.js" -o script.js
           python tools/build_hybrid.py
+          python tools/add_new_video_links.py
           python tools/apply_client_logos.py
           python tools/merge_client_logo_data.py
           python tools/decode_client_logos.py
@@ -88,6 +89,14 @@ jobs:
           grep -q 'SAFE CATEGORY FIX START' styles.css
           grep -q 'category=ai-work' index.html
           grep -q '>AI Work<' index.html
+          grep -q 'category=more-work' index.html
+          grep -q 'N4uGPUETGb4' script.js
+          grep -q '1eFghNwpODA' script.js
+          grep -q 'SYQvIrjg8qw' script.js
+          grep -q 'G1aMXgXTAog' script.js
+          grep -q 'fbrKZPloehw' script.js
+          grep -q 'T1VOBnWPwtE' script.js
+          grep -q '0UY-_mTpUDA' script.js
           grep -q "title: 'Sports'" site-updates.js
           grep -q "title: 'Events'" site-updates.js
           grep -q "title: 'AI Work'" site-updates.js
@@ -124,6 +133,7 @@ jobs:
             curl --fail --location --silent --show-error "${final}/index.html?build=${GITHUB_SHA}" -o /tmp/index.html || true
             curl --fail --location --silent --show-error "${final}/styles.css?build=${GITHUB_SHA}" -o /tmp/styles.css || true
             curl --fail --location --silent --show-error "${final}/site-updates.js?build=${GITHUB_SHA}" -o /tmp/site-updates.js || true
+            curl --fail --location --silent --show-error "${final}/script.js?build=${GITHUB_SHA}" -o /tmp/script.js || true
             if grep -q 'data-exact-logo="on"' /tmp/index.html 2>/dev/null \
               && grep -q 'data-exact-logo="satuc"' /tmp/index.html 2>/dev/null \
               && grep -q 'data-exact-logo="souad-kafafi"' /tmp/index.html 2>/dev/null \
@@ -137,6 +147,12 @@ jobs:
               && grep -q 'data-exact-logo="el-gouna"' /tmp/index.html 2>/dev/null \
               && grep -q 'EXACT USER LOGO OVERRIDES START' /tmp/styles.css 2>/dev/null \
               && grep -q 'category=ai-work' /tmp/index.html 2>/dev/null \
+              && grep -q 'category=more-work' /tmp/index.html 2>/dev/null \
+              && grep -q 'N4uGPUETGb4' /tmp/script.js 2>/dev/null \
+              && grep -q '1eFghNwpODA' /tmp/script.js 2>/dev/null \
+              && grep -q 'SYQvIrjg8qw' /tmp/script.js 2>/dev/null \
+              && grep -q 'G1aMXgXTAog' /tmp/script.js 2>/dev/null \
+              && grep -q '0UY-_mTpUDA' /tmp/script.js 2>/dev/null \
               && grep -q "title: 'Sports'" /tmp/site-updates.js 2>/dev/null \
               && grep -q "title: 'Events'" /tmp/site-updates.js 2>/dev/null \
               && grep -q "title: 'AI Work'" /tmp/site-updates.js 2>/dev/null; then
