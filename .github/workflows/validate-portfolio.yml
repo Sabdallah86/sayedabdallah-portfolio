@@ -1,0 +1,34 @@
+name: Validate portfolio routes
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: ['fix/**']
+permissions:
+  contents: read
+jobs:
+  routes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate source routes
+        run: |
+          node --check script.js
+          node --check site-updates.js
+          node --test tests/portfolio-routing.test.cjs
+      - name: Validate generated portfolio
+        run: |
+          python tools/build_hybrid.py
+          python tools/apply_client_logos.py
+          python tools/merge_client_logo_data.py
+          python tools/decode_client_logos.py
+          python tools/apply_client_logos_v3.py
+          python tools/fix_categories_layout.py
+          python tools/add_new_video_links.py
+          python tools/apply_user_logo_overrides.py
+          node --check script.js
+          node --check site-updates.js
+          node --test tests/portfolio-routing.test.cjs

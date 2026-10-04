@@ -4,32 +4,19 @@ import re
 p = Path('index.html')
 html = p.read_text(encoding='utf-8')
 
-# Selected Work must point directly to the live collections, never the legacy
-# combined sports-events category.
-html = re.sub(
-    r'href="index\.html\?category=sports-events"(?=\s*>\s*<div class="selected-media"><img src="assets/ciff\.webp")',
-    'href="index.html?category=events&collection=ciff"',
-    html,
-    count=1,
-)
-html = re.sub(
-    r'href="index\.html\?category=sports-events"(?=\s*>\s*<div class="selected-media"><img src="assets/al-ahly\.webp")',
-    'href="index.html?category=sports&collection=al-ahly-club"',
-    html,
-    count=1,
-)
+# Repair complete card blocks so both original and hybrid markup are supported.
+def repair_selected_card(match):
+    block = match.group(0)
+    target = None
+    if 'src="assets/ciff.webp"' in block:
+        target = 'index.html?category=events&amp;collection=ciff'
+    elif 'src="assets/al-ahly.webp"' in block:
+        target = 'index.html?category=sports&amp;collection=al-ahly-club'
+    if target:
+        block = re.sub(r'href="index\.html\?category=[^"]+"', f'href="{target}"', block, count=1)
+    return block
 
-# Be defensive in case a previous build already rewrote the base category URL.
-html = html.replace(
-    'href="index.html?category=events">\n          <div class="selected-media"><img src="assets/ciff.webp"',
-    'href="index.html?category=events&collection=ciff">\n          <div class="selected-media"><img src="assets/ciff.webp"',
-    1,
-)
-html = html.replace(
-    'href="index.html?category=sports">\n          <div class="selected-media"><img src="assets/al-ahly.webp"',
-    'href="index.html?category=sports&collection=al-ahly-club">\n          <div class="selected-media"><img src="assets/al-ahly.webp"',
-    1,
-)
+html = re.sub(r'<a\b[^>]*class="[^"\n]*(?:selected-card|project-link-card)[^"\n]*"[^>]*>[\s\S]*?</a>', repair_selected_card, html)
 
 # Teatro in Selected Work should always lead somewhere usable. The direct MP4
 # player is kept inside Series, while the homepage card opens the Series page.
@@ -51,14 +38,17 @@ new_grid = '''<div class="category-grid">
         <a class="category-card reveal category-link" href="index.html?category=events"><span>05</span><h3>Events</h3><p>Festival and event coverage.</p><b>View Projects →</b></a>
         <a class="category-card reveal category-link" href="index.html?category=institutional"><span>06</span><h3>Institutional &amp;<br>Social Impact</h3><p>Human stories with purpose.</p><b>View Projects →</b></a>
         <a class="category-card reveal category-link" href="index.html?category=ai-work"><span>07</span><h3>AI Work</h3><p>AI-assisted visual storytelling and creative experiments.</p><b>View Projects →</b></a>
+        <a class="category-card reveal category-link" href="index.html?category=on-e-channel"><span>08</span><h3>ON E Channel</h3><p>Channel promos and broadcast edits.</p><b>View Projects →</b></a>
+        <a class="category-card reveal category-link" href="index.html?category=more-work"><span>09</span><h3>More Selected<br>Work</h3><p>Additional selected projects across different formats.</p><b>View Projects →</b></a>
       </div>'''
 
 html, n = re.subn(r'<div class="category-grid">[\s\S]*?</div>\n    </section>', new_grid + '\n    </section>', html, count=1)
 if n != 1:
     raise RuntimeError('Could not replace category grid')
 
-# No homepage link should ever point to the old combined category.
-html = html.replace('index.html?category=sports-events', 'index.html?category=sports')
+# Fail explicitly rather than misrouting an unrecognized legacy link.
+if 'category=sports-events' in html:
+    raise RuntimeError('Unrecognized legacy Sports & Events link')
 
 p.write_text(html, encoding='utf-8')
 
