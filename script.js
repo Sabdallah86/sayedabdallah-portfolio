@@ -869,7 +869,7 @@ function renderCategoryPage(categoryKey, collectionKey) {
   const pageData = invalidRoute ? {
     title:'Work not found', kicker:'Portfolio',
     description:'This category or collection is unavailable. Choose a work category below.',
-    cover:'assets/showreel.webp', projects:[]
+    cover:'assets/on-e.webp', projects:[]
   } : collection || category;
   const isCollection = !invalidRoute && Boolean(collection);
 
