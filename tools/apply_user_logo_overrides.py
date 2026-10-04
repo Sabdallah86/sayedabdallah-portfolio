@@ -58,8 +58,8 @@ css = re.sub(r'/\* EXACT USER LOGO OVERRIDES START \*/[\s\S]*?/\* EXACT USER LOG
 css += r'''
 /* EXACT USER LOGO OVERRIDES START */
 .client-brand-v3[data-exact-logo] .client-logo-v3-mark{
-  background:#fff!important;
-  padding:10px;
+  background:transparent!important;
+  padding:0;
   overflow:hidden!important;
 }
 .client-brand-v3[data-exact-logo] img{
@@ -73,7 +73,7 @@ css += r'''
   opacity:1!important;
 }
 .client-brand-v3-user-dark .client-logo-v3-mark{
-  background:#000!important;
+  background:transparent!important;
   padding:0!important;
 }
 /* EXACT USER LOGO OVERRIDES END */
