@@ -35,7 +35,7 @@ index_path = Path("index.html")
 html = index_path.read_text(encoding="utf-8")
 
 selected_work = '''<div class="project-grid">
-        <a class="project-card reveal project-link-card" href="index.html?category=sports-events" data-category="Sports">
+        <a class="project-card reveal project-link-card" href="index.html?category=sports&amp;collection=al-ahly-club" data-category="Sports">
           <div class="project-image">
             <img src="assets/al-ahly.webp" alt="Al Ahly Club sports content project" loading="lazy">
             <span class="play-button" aria-hidden="true">▶</span>
@@ -46,7 +46,7 @@ selected_work = '''<div class="project-grid">
           </div>
         </a>
 
-        <a class="project-card reveal project-link-card" href="index.html?category=sports-events" data-category="Events">
+        <a class="project-card reveal project-link-card" href="index.html?category=events&amp;collection=ciff" data-category="Events">
           <div class="project-image">
             <img src="assets/ciff.webp" alt="Cairo International Film Festival project" loading="lazy">
             <span class="play-button" aria-hidden="true">▶</span>

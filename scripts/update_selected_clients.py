@@ -90,7 +90,7 @@ script = script[:start] + updated + ";\n\n" + script[function_start:]
 script_path.write_text(script, encoding="utf-8")
 
 # Add a standalone ON E card to Work Categories if it is not already there.
-if 'href="index.html?category=on-e-channel"' not in html:
+if not re.search(r'<a class="category-card[^"]*" href="index.html\?category=on-e-channel"', html):
     tv_card_pattern = re.compile(
         r'(<a class="category-card reveal category-link" href="index\.html\?category=tv-programs">.*?</a>)',
         re.S,

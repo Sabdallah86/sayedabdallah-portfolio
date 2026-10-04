@@ -20,15 +20,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail --location --retry 4 --retry-delay 2 \
-            "https://sayedabdallah.pages.dev/script.js" -o script.js
           python tools/build_hybrid.py
           python tools/apply_client_logos.py
           python tools/merge_client_logo_data.py
           python tools/decode_client_logos.py
           python tools/apply_client_logos_v3.py
           python tools/fix_categories_layout.py
-          python tools/add_new_video_links.py
           python tools/apply_user_logo_overrides.py
           node --check script.js
           node --check site-updates.js
@@ -94,14 +91,15 @@ jobs:
           grep -q 'oIS4SghLtSs' script.js
           grep -q 's72BulxLJgM' script.js
           grep -q '5jaNOku5Tw0' script.js
-          grep -q 'N4uGPUETGb4' site-updates.js
-          grep -q '1eFghNwpODA' site-updates.js
-          grep -q '8YHgTTQOKdo' site-updates.js
-          grep -q "title: 'Sports'" site-updates.js
-          grep -q "title: 'Events'" site-updates.js
-          grep -q "title: 'AI Work'" site-updates.js
+          grep -q 'N4uGPUETGb4' script.js
+          grep -q '1eFghNwpODA' script.js
+          grep -q '8YHgTTQOKdo' script.js
+          grep -q '"title": "Sports"' script.js
+          grep -q '"title": "Events"' script.js
+          grep -q '"title": "AI Work"' script.js
           node --check script.js
           node --check site-updates.js
+          node --test tests/portfolio-routing.test.cjs
           echo "LOCAL VALIDATION PASSED"
 
       - name: Deploy production
@@ -142,9 +140,9 @@ jobs:
               && grep -q 'oIS4SghLtSs' /tmp/script.js 2>/dev/null \
               && grep -q 's72BulxLJgM' /tmp/script.js 2>/dev/null \
               && grep -q '5jaNOku5Tw0' /tmp/script.js 2>/dev/null \
-              && grep -q 'N4uGPUETGb4' /tmp/site-updates.js 2>/dev/null \
-              && grep -q '1eFghNwpODA' /tmp/site-updates.js 2>/dev/null \
-              && grep -q '8YHgTTQOKdo' /tmp/site-updates.js 2>/dev/null; then
+              && grep -q 'N4uGPUETGb4' /tmp/script.js 2>/dev/null \
+              && grep -q '1eFghNwpODA' /tmp/script.js 2>/dev/null \
+              && grep -q '8YHgTTQOKdo' /tmp/script.js 2>/dev/null; then
               ok=1; break
             fi
             sleep 4

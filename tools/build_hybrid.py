@@ -165,11 +165,11 @@ index = f'''<!doctype html>
           <div class="selected-media"><img src="https://i.ytimg.com/vi/2KVyASYThgw/hqdefault.jpg" alt="Hospital 57357 Qowa Fi Alby" referrerpolicy="no-referrer"><span class="play-button">▶</span></div>
           <div class="selected-meta"><p>Music Video</p><h3>Hospital 57357<br>Qowa Fi Alby</h3><small>Video Editing</small></div>
         </article>
-        <a class="selected-card reveal" href="index.html?category=sports-events">
+        <a class="selected-card reveal" href="index.html?category=events&amp;collection=ciff">
           <div class="selected-media"><img src="assets/ciff.webp" alt="Cairo International Film Festival"><span class="play-button">▶</span></div>
           <div class="selected-meta"><p>Event Coverage</p><h3>Cairo International<br>Film Festival</h3><small>Event Highlights</small></div>
         </a>
-        <a class="selected-card reveal" href="index.html?category=sports-events">
+        <a class="selected-card reveal" href="index.html?category=sports&amp;collection=al-ahly-club">
           <div class="selected-media"><img src="assets/al-ahly.webp" alt="Al Ahly Club"><span class="play-button">▶</span></div>
           <div class="selected-meta"><p>Sports Content</p><h3>Al Ahly Club</h3><small>Promotional Content</small></div>
         </a>
@@ -196,9 +196,9 @@ index = f'''<!doctype html>
         <a class="category-card reveal category-link" href="index.html?category=commercial"><span>01</span><h3>Commercial &amp;<br>Branded Content</h3><p>Campaigns, ads and brand films.</p><b>View Projects →</b></a>
         <a class="category-card reveal category-link" href="index.html?category=tv-programs"><span>02</span><h3>TV Programs</h3><p>Programs, formats and television edits.</p><b>View Projects →</b></a>
         <a class="category-card reveal category-link" href="index.html?category=series"><span>03</span><h3>Series</h3><p>Promos, songs and selected series edits.</p><b>View Projects →</b></a>
-        <a class="category-card reveal category-link" href="index.html?category=sports-events"><span>04</span><h3>Sports &amp;<br>Events</h3><p>Fast-paced stories and event coverage.</p><b>View Projects →</b></a>
+        <a class="category-card reveal category-link" href="index.html?category=sports"><span>04</span><h3>Sports</h3><p>Sports edits, promos and club content.</p><b>View Projects →</b></a>
         <a class="category-card reveal category-link" href="index.html?category=institutional"><span>05</span><h3>Institutional &amp;<br>Social Impact</h3><p>Human stories with purpose.</p><b>View Projects →</b></a>
-        <a class="category-card reveal category-link" href="index.html?category=motion-graphics"><span>06</span><h3>Motion Graphics<br>&amp; 3D</h3><p>Titles, graphics and visual systems.</p><b>View Projects →</b></a>
+        <a class="category-card reveal category-link" href="index.html?category=ai-work"><span>06</span><h3>AI Work</h3><p>AI-assisted visual storytelling and creative experiments.</p><b>View Projects →</b></a>
       </div>
     </section>
 
