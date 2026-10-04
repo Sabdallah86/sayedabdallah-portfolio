@@ -30,7 +30,7 @@ def exact_brand(name, slug):
     return (
         f'<div class="client-brand-v3 client-brand-v3-logo{dark}" data-exact-logo="{slug}">'
         f'<span class="client-logo-v3-mark">'
-        f'<img src="data:image/webp;base64,{data}" alt="{safe} logo" loading="lazy" decoding="async">'
+        f'<img src="data:image/webp;base64,{data}" alt="{safe} logo" loading="eager" decoding="async">'
         f'</span><span class="client-name-v3">{safe}</span></div>'
     )
 
@@ -59,7 +59,7 @@ css += r'''
 /* EXACT USER LOGO OVERRIDES START */
 .client-brand-v3[data-exact-logo] .client-logo-v3-mark{
   background:#fff!important;
-  padding:5px!important;
+  padding:10px;
   overflow:hidden!important;
 }
 .client-brand-v3[data-exact-logo] img{
