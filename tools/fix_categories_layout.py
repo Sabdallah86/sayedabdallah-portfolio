@@ -60,10 +60,8 @@ text += r'''
 .category-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;align-items:stretch!important}
 .category-card{display:flex!important;flex-direction:column!important;min-height:220px!important;visibility:visible!important;opacity:1!important;transform:none!important}
 .category-card b{margin-top:auto!important}
-.client-logo-v3-mark{width:112px!important;min-width:112px!important;height:72px!important;padding:6px!important;background:#fff!important;border-radius:2px!important;overflow:hidden!important}
-.client-brand-v3 img{display:block!important;width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important;object-fit:contain!important;object-position:center!important;filter:none!important}
 @media(max-width:1200px){.category-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
-@media(max-width:680px){.category-grid{grid-template-columns:1fr!important}.category-card{min-height:180px!important}.client-logo-v3-mark{width:92px!important;min-width:92px!important;height:62px!important}}
+@media(max-width:680px){.category-grid{grid-template-columns:1fr!important}.category-card{min-height:180px!important}}
 /* SAFE CATEGORY FIX END */
 '''
 css.write_text(text, encoding='utf-8')

@@ -59,7 +59,7 @@ css += r'''
 /* EXACT USER LOGO OVERRIDES START */
 .client-brand-v3[data-exact-logo] .client-logo-v3-mark{
   background:#fff!important;
-  padding:5px!important;
+  padding:10px;
   overflow:hidden!important;
 }
 .client-brand-v3[data-exact-logo] img{
