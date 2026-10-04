@@ -43,6 +43,9 @@ def logo_source(slug):
     if preferred.exists() and preferred.stat().st_size:
         return str(preferred).replace('\\','/')
     # All remaining merged logo data is decoded before this script runs.
+    # These legacy placeholders contain incomplete PNG data, not usable artwork.
+    if slug in {'shasha', 'al-tahrir'}:
+        return None
     generated = Path('assets/client-logos') / f'{slug}.png'
     if generated.exists() and generated.stat().st_size:
         return str(generated).replace('\\','/')
